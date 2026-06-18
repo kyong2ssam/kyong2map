@@ -142,15 +142,15 @@
             font-weight: bold;
             margin-bottom: 6px;
             display: block;
-            white-space: nowrap;
+            /* ✅ 핵심 수정: 주차 정보에서도 구글시트 줄바꿈(\n)이 정상 적용되도록 변경 */
+            white-space: pre-wrap; 
         }
         .info-desc {
             font-size: 14px;
             color: #444;
             line-height: 1.6;
             word-break: break-all;
-            /* ✅ 수정됨: 다시 구글 시트의 줄바꿈을 인식하도록 변경 */
-            white-space: pre-wrap; 
+            white-space: pre; 
         }
         
         @media (max-width: 600px) {
