@@ -90,7 +90,6 @@
             display: none;
         }
         
-        /* 팝업 관련 모든 디자인 완벽하게 유지 */
         .info-window {
             padding: 10px 35px 10px 10px; 
             width: max-content; 
@@ -135,7 +134,6 @@
             white-space: nowrap;
         }
         
-        /* 주차 정보 내어쓰기 정렬 유지 */
         .info-parking-container {
             display: flex;
             align-items: flex-start;
@@ -219,14 +217,18 @@
                 };
                 map = new kakao.maps.Map(mapContainer, mapOption);
 
-                // 지도 빈 영역 클릭 시 팝업 닫기 유지
                 kakao.maps.event.addListener(map, 'click', function() {
                     closeAllInfoWindows();
                 });
 
-                // ✅ 추가 수정 반영: 지도 배율(줌 레벨)이 변할 때마다 마커 실시간 필터링 체크
-                kakao.maps.event.addListener(map, 'zoom_changed', function() {
-                    applyFilters();
+                // ✅ 수정 요청 반영: 지도 이동이나 확대/축소가 "끝났을 때(idle)" 화면을 감지하여 지역을 자동 변경
+                kakao.maps.event.addListener(map, 'idle', function() {
+                    const zoomLevel = map.getLevel();
+                    if (zoomLevel < 9) {
+                        autoUpdateRegionByView();
+                    } else {
+                        applyFilters();
+                    }
                 });
 
                 fetchSheetNamesAndData();
@@ -235,11 +237,9 @@
             }
         }
 
-        // 초기 데이터 호출 로직 최적화
         async function fetchSheetNamesAndData() {
             showLoader(true);
             try {
-                // 1. 지역 목록(시트명) 로드
                 const responseSheets = await fetch(`${GAS_API_URL}?action=getSheets`);
                 const sheetNames = await responseSheets.json();
                 const selectElement = document.getElementById('region-select');
@@ -251,13 +251,12 @@
                     selectElement.appendChild(option);
                 });
 
-                // 2. 전체 데이터 실시간 Live 통합 로드
                 const responseData = await fetch(GAS_API_URL);
                 allStoreData = await responseData.json();
                 
                 if (sheetNames.length > 0) {
                     updateCategoryUI();
-                    changeRegion(sheetNames[0]); // 첫 번째 시트 지역을 기본 화면으로 설정
+                    changeRegion(sheetNames[0]); 
                 }
             } catch (error) {
                 showLoader(false);
@@ -276,7 +275,50 @@
             });
         }
 
-        // ✅ 필터 시스템 대폭 업그레이드 (지역/분류/배율 동시 계산)
+        // ✅ 현재 화면에 보이는 위치를 파악하여 '지역 드롭다운'을 자동으로 변경하는 함수
+        function autoUpdateRegionByView() {
+            const center = map.getCenter();
+            const bounds = map.getBounds();
+            
+            let regionCounts = {};
+            let closestRegion = null;
+            let minDistance = Infinity;
+
+            allStoreData.forEach(store => {
+                if (store.lat && store.lng) {
+                    const storeLatLng = new kakao.maps.LatLng(store.lat, store.lng);
+                    
+                    // 화면 안에 들어온 마커들의 지역 카운트
+                    if (bounds.contain(storeLatLng)) {
+                        regionCounts[store.region] = (regionCounts[store.region] || 0) + 1;
+                    }
+
+                    // 화면 안에 마커가 없을 경우를 대비해 화면 중심에서 가장 가까운 마커의 지역을 탐색
+                    const dist = Math.pow(store.lat - center.getLat(), 2) + Math.pow(store.lng - center.getLng(), 2);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        closestRegion = store.region;
+                    }
+                }
+            });
+
+            let targetRegion = null;
+            if (Object.keys(regionCounts).length > 0) {
+                // 화면 내에 가장 마커가 많이 보이는 지역을 타겟으로 설정
+                targetRegion = Object.keys(regionCounts).reduce((a, b) => regionCounts[a] > regionCounts[b] ? a : b);
+            } else {
+                // 화면 내에 아무 마커도 없다면 중심에서 가장 가까운 지역을 타겟으로 설정
+                targetRegion = closestRegion;
+            }
+
+            const regionSelect = document.getElementById('region-select');
+            if (targetRegion && regionSelect.value !== targetRegion) {
+                regionSelect.value = targetRegion; // 드롭다운 값 자동 변경
+            }
+            
+            applyFilters();
+        }
+
         function applyFilters() {
             clearMap();
             
@@ -284,19 +326,16 @@
             const selectedCategory = document.getElementById('category-select').value;
             const zoomLevel = map.getLevel();
 
-            // 1차 필터: 카테고리 분류 선택 적용
             let filtered = allStoreData.filter(s => {
                 return selectedCategory === "전체" || s.category === selectedCategory;
             });
 
-            // 2차 필터: 지도가 축소된 상태(레벨 9 이상)면 전지역 표기, 확대된 상태(레벨 9 미만)면 선택한 지역만 표기
             if (zoomLevel < 9) {
                 filtered = filtered.filter(s => s.region === selectedRegion);
             }
 
             if(filtered.length === 0) { showLoader(false); return; }
 
-            // 마커 및 팝업 렌더링 시작
             filtered.forEach(store => {
                 if (store.lat && store.lng) {
                     const coords = new kakao.maps.LatLng(store.lat, store.lng);
@@ -327,8 +366,8 @@
                         closeAllInfoWindows();
                         infowindow.open(map, marker);
                         
-                        map.setLevel(4); // 클릭 시 레벨 4로 확대 유지
-                        map.panTo(coords); // 화면 중앙 이동 유지
+                        map.setLevel(4); 
+                        map.panTo(coords); 
                     });
                     infoWindows.push(infowindow);
                 }
@@ -336,11 +375,9 @@
             showLoader(false);
         }
 
-        // 지역 드롭다운 변경 시 작동 방식 최적화
         function changeRegion(regionName) {
             showLoader(true);
             
-            // 선택한 지역에 소속된 마커들만 기준으로 지도 바운즈(범위) 계산 후 비행하듯 이동
             let bounds = new kakao.maps.LatLngBounds();
             let validCount = 0;
             
@@ -352,7 +389,7 @@
             });
 
             if (validCount > 0) {
-                map.setBounds(bounds); // 해당 지역으로 가면서 줌 레벨이 자동으로 확대됨 (<9)
+                map.setBounds(bounds); 
             }
             
             applyFilters();
