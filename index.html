@@ -204,9 +204,8 @@
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxwo6_TX31cBWDfkJM0MsrUvb0JF5NL-pHdUntl3BSwozEFcT237SGiqKRqjM6gpyuv/exec"; 
         
         let map;
-        let markers = [];
-        let infoWindows = [];
         let allStoreData = []; 
+        let storeMarkers = []; // ✅ 마커들을 저장하고 관리하는 핵심 배열로 변경
 
         function initMap() {
             try {
@@ -221,7 +220,6 @@
                     closeAllInfoWindows();
                 });
 
-                // ✅ 수정 요청 반영: 지도 이동이나 확대/축소가 "끝났을 때(idle)" 화면을 감지하여 지역을 자동 변경
                 kakao.maps.event.addListener(map, 'idle', function() {
                     const zoomLevel = map.getLevel();
                     if (zoomLevel < 9) {
@@ -254,6 +252,8 @@
                 const responseData = await fetch(GAS_API_URL);
                 allStoreData = await responseData.json();
                 
+                initializeMarkers(); // ✅ 데이터를 가져오면 마커를 한 번만 싹 만들어 둡니다.
+
                 if (sheetNames.length > 0) {
                     updateCategoryUI();
                     changeRegion(sheetNames[0]); 
@@ -275,72 +275,18 @@
             });
         }
 
-        // ✅ 현재 화면에 보이는 위치를 파악하여 '지역 드롭다운'을 자동으로 변경하는 함수
-        function autoUpdateRegionByView() {
-            const center = map.getCenter();
-            const bounds = map.getBounds();
-            
-            let regionCounts = {};
-            let closestRegion = null;
-            let minDistance = Infinity;
+        // ✅ 새롭게 추가된 핵심 함수: 마커를 파괴/재생성하지 않고 한 번만 준비해 두는 역할
+        function initializeMarkers() {
+            storeMarkers.forEach(item => {
+                item.marker.setMap(null);
+                item.infowindow.close();
+            });
+            storeMarkers = [];
 
             allStoreData.forEach(store => {
                 if (store.lat && store.lng) {
-                    const storeLatLng = new kakao.maps.LatLng(store.lat, store.lng);
-                    
-                    // 화면 안에 들어온 마커들의 지역 카운트
-                    if (bounds.contain(storeLatLng)) {
-                        regionCounts[store.region] = (regionCounts[store.region] || 0) + 1;
-                    }
-
-                    // 화면 안에 마커가 없을 경우를 대비해 화면 중심에서 가장 가까운 마커의 지역을 탐색
-                    const dist = Math.pow(store.lat - center.getLat(), 2) + Math.pow(store.lng - center.getLng(), 2);
-                    if (dist < minDistance) {
-                        minDistance = dist;
-                        closestRegion = store.region;
-                    }
-                }
-            });
-
-            let targetRegion = null;
-            if (Object.keys(regionCounts).length > 0) {
-                // 화면 내에 가장 마커가 많이 보이는 지역을 타겟으로 설정
-                targetRegion = Object.keys(regionCounts).reduce((a, b) => regionCounts[a] > regionCounts[b] ? a : b);
-            } else {
-                // 화면 내에 아무 마커도 없다면 중심에서 가장 가까운 지역을 타겟으로 설정
-                targetRegion = closestRegion;
-            }
-
-            const regionSelect = document.getElementById('region-select');
-            if (targetRegion && regionSelect.value !== targetRegion) {
-                regionSelect.value = targetRegion; // 드롭다운 값 자동 변경
-            }
-            
-            applyFilters();
-        }
-
-        function applyFilters() {
-            clearMap();
-            
-            const selectedRegion = document.getElementById('region-select').value;
-            const selectedCategory = document.getElementById('category-select').value;
-            const zoomLevel = map.getLevel();
-
-            let filtered = allStoreData.filter(s => {
-                return selectedCategory === "전체" || s.category === selectedCategory;
-            });
-
-            if (zoomLevel < 9) {
-                filtered = filtered.filter(s => s.region === selectedRegion);
-            }
-
-            if(filtered.length === 0) { showLoader(false); return; }
-
-            filtered.forEach(store => {
-                if (store.lat && store.lng) {
                     const coords = new kakao.maps.LatLng(store.lat, store.lng);
-                    const marker = new kakao.maps.Marker({ map: map, position: coords });
-                    markers.push(marker);
+                    const marker = new kakao.maps.Marker({ position: coords }); // 지도는 아직 지정 안 함
 
                     const infoContent = `
                         <div class="info-window">
@@ -365,13 +311,82 @@
                     kakao.maps.event.addListener(marker, 'click', function() {
                         closeAllInfoWindows();
                         infowindow.open(map, marker);
-                        
                         map.setLevel(4); 
                         map.panTo(coords); 
                     });
-                    infoWindows.push(infowindow);
+
+                    storeMarkers.push({
+                        store: store,
+                        marker: marker,
+                        infowindow: infowindow
+                    });
                 }
             });
+        }
+
+        function autoUpdateRegionByView() {
+            const center = map.getCenter();
+            const bounds = map.getBounds();
+            
+            let regionCounts = {};
+            let closestRegion = null;
+            let minDistance = Infinity;
+
+            allStoreData.forEach(store => {
+                if (store.lat && store.lng) {
+                    const storeLatLng = new kakao.maps.LatLng(store.lat, store.lng);
+                    
+                    if (bounds.contain(storeLatLng)) {
+                        regionCounts[store.region] = (regionCounts[store.region] || 0) + 1;
+                    }
+
+                    const dist = Math.pow(store.lat - center.getLat(), 2) + Math.pow(store.lng - center.getLng(), 2);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        closestRegion = store.region;
+                    }
+                }
+            });
+
+            let targetRegion = null;
+            if (Object.keys(regionCounts).length > 0) {
+                targetRegion = Object.keys(regionCounts).reduce((a, b) => regionCounts[a] > regionCounts[b] ? a : b);
+            } else {
+                targetRegion = closestRegion;
+            }
+
+            const regionSelect = document.getElementById('region-select');
+            if (targetRegion && regionSelect.value !== targetRegion) {
+                regionSelect.value = targetRegion; 
+            }
+            
+            applyFilters();
+        }
+
+        // ✅ 필터 시스템 최적화: 삭제(destroy) 대신 보이기/숨기기(setMap)만 실행하여 팝업 유지
+        function applyFilters() {
+            const selectedRegion = document.getElementById('region-select').value;
+            const selectedCategory = document.getElementById('category-select').value;
+            const zoomLevel = map.getLevel();
+
+            storeMarkers.forEach(item => {
+                let isVisible = true;
+
+                if (selectedCategory !== "전체" && item.store.category !== selectedCategory) {
+                    isVisible = false;
+                }
+                if (zoomLevel < 9 && item.store.region !== selectedRegion) {
+                    isVisible = false;
+                }
+
+                if (isVisible) {
+                    item.marker.setMap(map); // 조건에 맞으면 보여줌
+                } else {
+                    item.marker.setMap(null); // 조건에 안 맞으면 숨김
+                    item.infowindow.close(); // 숨길 때는 열려있던 팝업도 닫아줌
+                }
+            });
+            
             showLoader(false);
         }
 
@@ -381,9 +396,9 @@
             let bounds = new kakao.maps.LatLngBounds();
             let validCount = 0;
             
-            allStoreData.forEach(store => {
-                if (store.region === regionName && store.lat && store.lng) {
-                    bounds.extend(new kakao.maps.LatLng(store.lat, store.lng));
+            storeMarkers.forEach(item => {
+                if (item.store.region === regionName) {
+                    bounds.extend(item.marker.getPosition());
                     validCount++;
                 }
             });
@@ -400,16 +415,9 @@
         }
         
         function closeAllInfoWindows() {
-            infoWindows.forEach(iw => iw.close());
+            storeMarkers.forEach(item => item.infowindow.close());
         }
 
-        function clearMap() { 
-            markers.forEach(m => m.setMap(null)); 
-            closeAllInfoWindows(); 
-            markers = []; 
-            infoWindows = []; 
-        }
-        
         function showLoader(show) { 
             document.getElementById('loader').style.display = show ? 'block' : 'none'; 
         }
