@@ -90,14 +90,12 @@
             display: none;
         }
         
-        /* 인포윈도우 유동적 크기 및 한 줄 표기 강제 스타일 절대 유지 */
+        /* ✅ 수정된 팝업 스타일: 테두리 잘림 현상 해결 및 X버튼 겹침 방지 */
         .info-window {
-            padding: 10px 15px; 
-            width: auto; 
+            padding: 10px 35px 10px 10px; /* 우측을 35px로 넓혀서 X버튼과 글씨가 안 겹치게 함 */
+            width: max-content; /* 카카오맵 기본 테두리가 내용물 길이를 완벽하게 감싸도록 설정 */
             min-width: 150px;
-            max-width: none !important; 
-            background: white;
-            border-radius: 8px; 
+            /* 테두리를 덮어버리던 background: white; 와 border-radius 삭제 */
         }
         .info-header {
             display: flex;
@@ -208,7 +206,6 @@
                 };
                 map = new kakao.maps.Map(mapContainer, mapOption);
 
-                // 지도 빈 영역 클릭 시 팝업 닫기 유지
                 kakao.maps.event.addListener(map, 'click', function() {
                     closeAllInfoWindows();
                 });
@@ -304,7 +301,6 @@
                         closeAllInfoWindows();
                         infowindow.open(map, marker);
                         
-                        // 마커 클릭 시 화면 정중앙 이동 및 레벨 4로 확대 기능 유지
                         map.setLevel(4);
                         map.panTo(coords); 
                     });
@@ -332,7 +328,6 @@
         }
         function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
 
-        // ✅ 카카오맵 비동기 안전 로드 적용
         window.onload = function() {
             if (typeof kakao !== 'undefined' && kakao.maps) {
                 kakao.maps.load(() => initMap());
