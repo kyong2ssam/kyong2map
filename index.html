@@ -12,6 +12,8 @@
             margin: 0;
             padding: 0;
             font-family: 'Malgun Gothic', dotum, sans-serif;
+            /* ✅ 전체 글씨 크기 확대 */
+            font-size: 16px; 
         }
         body, html {
             width: 100%;
@@ -35,12 +37,14 @@
         }
         label {
             font-weight: bold;
-            font-size: 14px;
+            /* ✅ 가독성을 위해 라벨 크기 확대 */
+            font-size: 16px; 
             color: #333;
         }
         select {
             padding: 6px 12px;
-            font-size: 14px;
+            /* ✅ 가독성을 위해 선택박스 크기 확대 */
+            font-size: 16px; 
             border: 1px solid #ccc;
             border-radius: 4px;
             outline: none;
@@ -68,37 +72,78 @@
             font-weight: bold;
             display: none;
         }
-        /* 카카오맵 인포윈도우 커스텀 스타일 */
+        
+        /* ✅ ✅ ✅ 카카오맵 인포윈도우 커스텀 스타일 대폭 수정 ✅ ✅ ✅ */
         .info-window {
-            padding: 10px;
-            min-width: 200px;
+            padding: 15px;
+            min-width: 250px;
+            max-width: 300px;
         }
-        .info-title {
-            font-size: 15px;
+        .info-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            gap: 10px;
+        }
+        .info-name-link {
+            font-size: 18px;
             font-weight: bold;
             color: #333;
-            margin-bottom: 4px;
+            text-decoration: none;
+        }
+        .info-name-link:hover {
+            text-decoration: underline;
         }
         .info-rating {
-            font-size: 14px;
+            font-size: 18px;
             color: #FFA500;
-            margin-bottom: 6px;
+            white-space: nowrap;
+        }
+        .info-address {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            display: block;
         }
         .info-desc {
-            font-size: 12px;
+            font-size: 14px;
             color: #666;
-            margin-bottom: 8px;
-            line-height: 1.4;
+            margin-bottom: 12px;
+            line-height: 1.6;
+            /* ✅ 구글 시트 줄바꿈 유지 ✅ */
+            white-space: pre-wrap;
         }
-        .info-link {
-            display: inline-block;
-            font-size: 12px;
-            color: #03C75A;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .info-link:hover {
-            text-decoration: underline;
+        
+        /* ✅ 모바일 전용 스타일 추가 ✅ */
+        @media (max-width: 600px) {
+            #control-bar {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 10px 15px;
+                gap: 5px;
+            }
+            label {
+                font-size: 14px;
+            }
+            select {
+                font-size: 14px;
+                padding: 4px 8px;
+            }
+            .info-window {
+                min-width: 200px;
+                padding: 10px;
+            }
+            .info-name-link {
+                font-size: 16px;
+            }
+            .info-rating {
+                font-size: 16px;
+            }
+            .info-address, .info-desc {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
@@ -129,7 +174,7 @@
             try {
                 const mapContainer = document.getElementById('map');
                 const mapOption = {
-                    center: new kakao.maps.LatLng(37.8228, 128.1555), // 초기 중심 좌표 (강원도)
+                    center: new kakao.maps.LatLng(37.8228, 128.1555), // 초기 중심 좌표 (강원도 중심 부근)
                     level: 10
                 };
                 map = new kakao.maps.Map(mapContainer, mapOption);
@@ -210,13 +255,15 @@
                         });
                         markers.push(marker);
 
-                        // ⭐ 변경된 부분: store.rating 에 입력된 별(예: ⭐⭐⭐)을 그대로 출력
+                        // ✅ ✅ ✅ 인포윈도우 HTML 내용 구성 (대폭 수정) ✅ ✅ ✅
                         const infoContent = `
                             <div class="info-window">
-                                <div class="info-title">${store.name}</div>
-                                <div class="info-rating">${store.rating || ''}</div>
+                                <div class="info-header">
+                                    <a href="${store.link}" target="_blank" class="info-name-link">${store.name}</a>
+                                    <span class="info-rating">${store.rating || ''}</span>
+                                </div>
+                                <span class="info-address">${store.address}</span>
                                 <div class="info-desc">${store.description || ''}</div>
-                                ${store.link ? `<a href="${store.link}" target="_blank" class="info-link">네이버 지도 보기 ↗</a>` : ''}
                             </div>
                         `;
 
