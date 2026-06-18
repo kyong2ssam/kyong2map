@@ -90,7 +90,6 @@
             display: none;
         }
         
-        /* 인포윈도우 유동적 크기 및 한 줄 표기 강제 스타일 유지 */
         .info-window {
             padding: 10px 15px; 
             width: auto; 
@@ -150,10 +149,10 @@
             color: #444;
             line-height: 1.6;
             word-break: break-all;
-            white-space: nowrap; 
+            /* ✅ 수정됨: 다시 구글 시트의 줄바꿈을 인식하도록 변경 */
+            white-space: pre-wrap; 
         }
         
-        /* 모바일 화면 맞춤 설정 */
         @media (max-width: 600px) {
             #header-bar {
                 top: 10px;
@@ -284,7 +283,6 @@
                         const marker = new kakao.maps.Marker({ map: map, position: coords });
                         markers.push(marker);
 
-                        // ✅ 수정 사항: "주차:" 텍스트를 제거하고 아이콘과 내용만 깔끔하게 나오도록 변경
                         const infoContent = `
                             <div class="info-window">
                                 <span class="info-category">${store.category || '기타'}</span>
