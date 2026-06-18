@@ -90,12 +90,11 @@
             display: none;
         }
         
-        /* ✅ 수정된 팝업 스타일: 테두리 잘림 현상 해결 및 X버튼 겹침 방지 */
         .info-window {
-            padding: 10px 35px 10px 10px; /* 우측을 35px로 넓혀서 X버튼과 글씨가 안 겹치게 함 */
-            width: max-content; /* 카카오맵 기본 테두리가 내용물 길이를 완벽하게 감싸도록 설정 */
+            padding: 10px 35px 10px 10px; 
+            width: max-content; 
             min-width: 150px;
-            /* 테두리를 덮어버리던 background: white; 와 border-radius 삭제 */
+            max-width: none !important; 
         }
         .info-header {
             display: flex;
@@ -134,14 +133,27 @@
             display: block;
             white-space: nowrap;
         }
+        
+        /* ✅ 수정 요청 반영: 주차 정보 영역 내어쓰기(들여쓰기) 정밀 조정 */
+        .info-parking-container {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 6px;
+            gap: 4px; /* 이모티콘과 글자 사이 간격 */
+        }
+        .info-parking-icon {
+            font-size: 13px;
+            flex-shrink: 0; /* 이모티콘 모양이 찌그러지지 않게 고정 */
+        }
         .info-parking {
             font-size: 13px;
             color: #2b70c9;
             font-weight: bold;
-            margin-bottom: 6px;
             display: block;
-            white-space: pre-wrap; 
+            white-space: pre-wrap; /* 구글 시트의 줄바꿈 유지 */
+            line-height: 1.4;
         }
+        
         .info-desc {
             font-size: 14px;
             color: #444;
@@ -282,6 +294,7 @@
                     const marker = new kakao.maps.Marker({ map: map, position: coords });
                     markers.push(marker);
 
+                    // ✅ 주차 정보를 정밀하게 내어쓰기 하기 위해 구조(HTML)를 감싸는 바구니 형태로 변경했습니다.
                     const infoContent = `
                         <div class="info-window">
                             <span class="info-category">${store.category || '기타'}</span>
@@ -290,7 +303,12 @@
                                 <span class="info-rating">${store.rating || ''}</span>
                             </div>
                             <span class="info-address">${store.address}</span>
-                            ${store.parking ? `<span class="info-parking">🚗 ${store.parking}</span>` : ''}
+                            ${store.parking ? `
+                                <div class="info-parking-container">
+                                    <span class="info-parking-icon">🚗</span>
+                                    <span class="info-parking">${store.parking}</span>
+                                </div>
+                            ` : ''}
                             <div class="info-desc">${store.description || ''}</div>
                         </div>
                     `;
