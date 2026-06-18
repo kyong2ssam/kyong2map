@@ -22,12 +22,10 @@
             background-color: #f5f5f5; 
         }
         
-        /* ✅ 상단 헤더 바 (타이틀 + 필터 통합) ✅ */
         #header-bar {
             position: absolute;
             top: 15px;
             left: 15px;
-            /* 오른쪽 여백을 주어 너무 길게 늘어나지 않도록 설정 */
             z-index: 10;
             background: rgba(255, 255, 255, 0.95);
             padding: 10px 20px;
@@ -36,14 +34,13 @@
             display: flex;
             align-items: center;
             flex-wrap: wrap;
-            gap: 20px; /* 타이틀과 필터 사이 간격 */
+            gap: 20px;
         }
 
-        /* ✅ 타이틀 폰트 및 디자인 수정 */
         #app-title {
-            font-family: 'Jua', sans-serif; /* 귀여운 폰트 적용 */
+            font-family: 'Jua', sans-serif; 
             font-size: 26px;
-            color: #ff6b81; /* 약간 코랄 핑크빛으로 포인트 */
+            color: #ff6b81;
         }
 
         .filter-container {
@@ -93,12 +90,18 @@
             display: none;
         }
         
-        /* 인포윈도우 스타일 유지 */
+        /* ✅ ✅ ✅ ✅ 수정 요청 반영: 유동적 크기 및 잘림 방지 스타일 ✅ ✅ ✅ ✅ */
         .info-window {
-            padding: 15px;
+            /* 상단 패딩은 줄이고, 하단 패딩을 대폭 늘려 설명이 잘리는 것을 방지 */
+            padding: 10px 15px 25px 15px; 
             width: auto; 
             min-width: 200px;
             max-width: 320px;
+            
+            /* ✅ 핵심: 내용에 따라 높이가 강제로 늘어나도록 보장 */
+            height: auto !important; 
+            overflow: visible; /* 스크롤바 생성을 방지하고 내용을 다 보여줌 */
+            background: white; /* 인포윈도우 배경색 보장 */
         }
         .info-header {
             display: flex;
@@ -133,14 +136,15 @@
         .info-address {
             font-size: 14px;
             color: #666;
-            margin-bottom: 4px;
+            margin-bottom: 6px; /* 주소 아래 여백 추가 */
             display: block;
+            line-height: 1.4; /* 주소가 여러 줄일 때 가독성 확보 */
         }
         .info-parking {
             font-size: 13px;
             color: #2b70c9;
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 10px; /* 주차 정보 아래 여백 추가 */
             display: block;
         }
         .info-desc {
@@ -149,6 +153,7 @@
             line-height: 1.6;
             white-space: pre-wrap; 
             word-break: break-all;
+            /* ❌ 더 이상 높이를 제한하거나 overflow를 숨기지 않음 ❌ */
         }
         
         /* 모바일 화면 맞춤 설정 */
@@ -159,7 +164,7 @@
                 right: 10px;
                 padding: 12px;
                 gap: 10px;
-                justify-content: center; /* 모바일에서는 가운데 정렬 */
+                justify-content: center;
             }
             .filter-container {
                 width: 100%;
@@ -167,6 +172,7 @@
             }
             .info-window {
                 max-width: 260px;
+                padding-bottom: 20px; /* 모바일에서는 하단 패딩 약간 줄임 */
             }
         }
     </style>
@@ -298,7 +304,12 @@
                             </div>
                         `;
 
-                        const infowindow = new kakao.maps.InfoWindow({ content: infoContent, removable: true });
+                        // ✅ 인포윈도우 설정을 안정적인 값으로 변경
+                        const infowindow = new kakao.maps.InfoWindow({ 
+                            content: infoContent, 
+                            removable: true,
+                            disableAutoPan: false // 자동으로 지도 화면 중앙으로 이동 (잘림 방지)
+                        });
                         kakao.maps.event.addListener(marker, 'click', function() {
                             infoWindows.forEach(iw => iw.close());
                             infowindow.open(map, marker);
