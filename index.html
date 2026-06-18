@@ -90,6 +90,7 @@
             display: none;
         }
         
+        /* 팝업 관련 모든 디자인 완벽하게 유지 */
         .info-window {
             padding: 10px 35px 10px 10px; 
             width: max-content; 
@@ -134,23 +135,23 @@
             white-space: nowrap;
         }
         
-        /* ✅ 수정 요청 반영: 주차 정보 영역 내어쓰기(들여쓰기) 정밀 조정 */
+        /* 주차 정보 내어쓰기 정렬 유지 */
         .info-parking-container {
             display: flex;
             align-items: flex-start;
             margin-bottom: 6px;
-            gap: 4px; /* 이모티콘과 글자 사이 간격 */
+            gap: 4px; 
         }
         .info-parking-icon {
             font-size: 13px;
-            flex-shrink: 0; /* 이모티콘 모양이 찌그러지지 않게 고정 */
+            flex-shrink: 0; 
         }
         .info-parking {
             font-size: 13px;
             color: #2b70c9;
             font-weight: bold;
             display: block;
-            white-space: pre-wrap; /* 구글 시트의 줄바꿈 유지 */
+            white-space: pre-wrap; 
             line-height: 1.4;
         }
         
@@ -218,21 +219,29 @@
                 };
                 map = new kakao.maps.Map(mapContainer, mapOption);
 
+                // 지도 빈 영역 클릭 시 팝업 닫기 유지
                 kakao.maps.event.addListener(map, 'click', function() {
                     closeAllInfoWindows();
                 });
 
-                fetchSheetNames();
+                // ✅ 추가 수정 반영: 지도 배율(줌 레벨)이 변할 때마다 마커 실시간 필터링 체크
+                kakao.maps.event.addListener(map, 'zoom_changed', function() {
+                    applyFilters();
+                });
+
+                fetchSheetNamesAndData();
             } catch (error) {
                 alert("지도 로딩 실패. API 키와 도메인 설정을 확인하세요.");
             }
         }
 
-        async function fetchSheetNames() {
+        // 초기 데이터 호출 로직 최적화
+        async function fetchSheetNamesAndData() {
             showLoader(true);
             try {
-                const response = await fetch(`${GAS_API_URL}?action=getSheets`);
-                const sheetNames = await response.json();
+                // 1. 지역 목록(시트명) 로드
+                const responseSheets = await fetch(`${GAS_API_URL}?action=getSheets`);
+                const sheetNames = await responseSheets.json();
                 const selectElement = document.getElementById('region-select');
                 selectElement.innerHTML = '';
                 sheetNames.forEach(name => {
@@ -241,21 +250,15 @@
                     option.textContent = name;
                     selectElement.appendChild(option);
                 });
-                if (sheetNames.length > 0) fetchStoreData(sheetNames[0]);
-            } catch (error) {
-                showLoader(false);
-            }
-        }
 
-        async function fetchStoreData(sheetName) {
-            showLoader(true);
-            clearMap();
-            try {
-                const response = await fetch(`${GAS_API_URL}?sheet=${encodeURIComponent(sheetName)}`);
-                allStoreData = await response.json();
+                // 2. 전체 데이터 실시간 Live 통합 로드
+                const responseData = await fetch(GAS_API_URL);
+                allStoreData = await responseData.json();
                 
-                updateCategoryUI();
-                renderMarkers(allStoreData);
+                if (sheetNames.length > 0) {
+                    updateCategoryUI();
+                    changeRegion(sheetNames[0]); // 첫 번째 시트 지역을 기본 화면으로 설정
+                }
             } catch (error) {
                 showLoader(false);
             }
@@ -273,28 +276,33 @@
             });
         }
 
-        function applyCategoryFilter() {
-            const selectedCategory = document.getElementById('category-select').value;
+        // ✅ 필터 시스템 대폭 업그레이드 (지역/분류/배율 동시 계산)
+        function applyFilters() {
             clearMap();
-            const filteredData = selectedCategory === "전체" 
-                ? allStoreData 
-                : allStoreData.filter(s => s.category === selectedCategory);
-            renderMarkers(filteredData);
-        }
+            
+            const selectedRegion = document.getElementById('region-select').value;
+            const selectedCategory = document.getElementById('category-select').value;
+            const zoomLevel = map.getLevel();
 
-        function renderMarkers(stores) {
-            let bounds = new kakao.maps.LatLngBounds();
-            let validMarkerCount = 0;
+            // 1차 필터: 카테고리 분류 선택 적용
+            let filtered = allStoreData.filter(s => {
+                return selectedCategory === "전체" || s.category === selectedCategory;
+            });
 
-            if(stores.length === 0) { showLoader(false); return; }
+            // 2차 필터: 지도가 축소된 상태(레벨 9 이상)면 전지역 표기, 확대된 상태(레벨 9 미만)면 선택한 지역만 표기
+            if (zoomLevel < 9) {
+                filtered = filtered.filter(s => s.region === selectedRegion);
+            }
 
-            stores.forEach(store => {
+            if(filtered.length === 0) { showLoader(false); return; }
+
+            // 마커 및 팝업 렌더링 시작
+            filtered.forEach(store => {
                 if (store.lat && store.lng) {
                     const coords = new kakao.maps.LatLng(store.lat, store.lng);
                     const marker = new kakao.maps.Marker({ map: map, position: coords });
                     markers.push(marker);
 
-                    // ✅ 주차 정보를 정밀하게 내어쓰기 하기 위해 구조(HTML)를 감싸는 바구니 형태로 변경했습니다.
                     const infoContent = `
                         <div class="info-window">
                             <span class="info-category">${store.category || '기타'}</span>
@@ -319,20 +327,40 @@
                         closeAllInfoWindows();
                         infowindow.open(map, marker);
                         
-                        map.setLevel(4);
-                        map.panTo(coords); 
+                        map.setLevel(4); // 클릭 시 레벨 4로 확대 유지
+                        map.panTo(coords); // 화면 중앙 이동 유지
                     });
                     infoWindows.push(infowindow);
-                    bounds.extend(coords);
-                    validMarkerCount++;
+                }
+            });
+            showLoader(false);
+        }
+
+        // 지역 드롭다운 변경 시 작동 방식 최적화
+        function changeRegion(regionName) {
+            showLoader(true);
+            
+            // 선택한 지역에 소속된 마커들만 기준으로 지도 바운즈(범위) 계산 후 비행하듯 이동
+            let bounds = new kakao.maps.LatLngBounds();
+            let validCount = 0;
+            
+            allStoreData.forEach(store => {
+                if (store.region === regionName && store.lat && store.lng) {
+                    bounds.extend(new kakao.maps.LatLng(store.lat, store.lng));
+                    validCount++;
                 }
             });
 
-            showLoader(false);
-            if(validMarkerCount > 0) map.setBounds(bounds);
+            if (validCount > 0) {
+                map.setBounds(bounds); // 해당 지역으로 가면서 줌 레벨이 자동으로 확대됨 (<9)
+            }
+            
+            applyFilters();
         }
 
-        function changeRegion(regionName) { fetchStoreData(regionName); }
+        function applyCategoryFilter() {
+            applyFilters();
+        }
         
         function closeAllInfoWindows() {
             infoWindows.forEach(iw => iw.close());
@@ -344,7 +372,10 @@
             markers = []; 
             infoWindows = []; 
         }
-        function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
+        
+        function showLoader(show) { 
+            document.getElementById('loader').style.display = show ? 'block' : 'none'; 
+        }
 
         window.onload = function() {
             if (typeof kakao !== 'undefined' && kakao.maps) {
