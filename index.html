@@ -133,8 +133,8 @@
             color: #666;
             margin-bottom: 4px;
             display: block;
-            white-space: normal;
-            line-height: 1.4;
+            /* ✅ 핵심 수정: 주소 역시 절대 줄바꿈 없이 한 줄로 강제 표기되도록 수정 */
+            white-space: nowrap;
         }
         .info-parking {
             font-size: 13px;
@@ -142,7 +142,6 @@
             font-weight: bold;
             margin-bottom: 6px;
             display: block;
-            /* ✅ 핵심 수정: 주차 정보에서도 구글시트 줄바꿈(\n)이 정상 적용되도록 변경 */
             white-space: pre-wrap; 
         }
         .info-desc {
