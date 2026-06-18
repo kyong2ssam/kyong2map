@@ -90,24 +90,21 @@
             display: none;
         }
         
-        /* ✅ ✅ ✅ ✅ 수정 요청 반영: 유동적 크기 및 잘림 방지 스타일 ✅ ✅ ✅ ✅ */
+        /* ✅ ✅ ✅ ✅ 수정 요청 반영: 유동적 크기 및 한 줄 표기 강제 스타일 ✅ ✅ ✅ ✅ */
         .info-window {
-            /* 상단 패딩은 줄이고, 하단 패딩을 대폭 늘려 설명이 잘리는 것을 방지 */
-            padding: 10px 15px 25px 15px; 
+            padding: 10px 15px; 
+            /* ✅ 핵심 1: 가로 너비 제한을 완전히 없애고 유동적으로 설정 */
             width: auto; 
-            min-width: 200px;
-            max-width: 320px;
-            
-            /* ✅ 핵심: 내용에 따라 높이가 강제로 늘어나도록 보장 */
-            height: auto !important; 
-            overflow: visible; /* 스크롤바 생성을 방지하고 내용을 다 보여줌 */
-            background: white; /* 인포윈도우 배경색 보장 */
+            min-width: 150px;
+            max-width: none !important; /* Force no maximum width */
+            background: white;
+            border-radius: 8px; /* 카카오 기본 인포윈도우 스타일에 맞춤 */
         }
         .info-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             gap: 15px;
         }
         .info-name-link {
@@ -115,9 +112,10 @@
             font-weight: bold;
             color: #333;
             text-decoration: none;
+            /* ✅ 핵심 2: 가게 이름 절대 잘림 방지 (한 줄 강제, 오버플로우 visible) */
             white-space: nowrap; 
-            overflow: hidden;
-            text-overflow: ellipsis;
+            overflow: visible;
+            text-overflow: clip; /* clip instead of ellipsis */
         }
         .info-rating {
             font-size: 16px;
@@ -136,24 +134,28 @@
         .info-address {
             font-size: 14px;
             color: #666;
-            margin-bottom: 6px; /* 주소 아래 여백 추가 */
+            margin-bottom: 4px;
             display: block;
-            line-height: 1.4; /* 주소가 여러 줄일 때 가독성 확보 */
+            /* 주소는 너무 길면 지도 너비를 벗어날 수 있으므로 자동 줄바꿈 유지 */
+            white-space: normal;
+            line-height: 1.4;
         }
         .info-parking {
             font-size: 13px;
             color: #2b70c9;
             font-weight: bold;
-            margin-bottom: 10px; /* 주차 정보 아래 여백 추가 */
+            margin-bottom: 6px;
             display: block;
+            /* ✅ 핵심 3: 주차 여부 한 줄 표기 강제 */
+            white-space: nowrap;
         }
         .info-desc {
             font-size: 14px;
             color: #444;
             line-height: 1.6;
-            white-space: pre-wrap; 
             word-break: break-all;
-            /* ❌ 더 이상 높이를 제한하거나 overflow를 숨기지 않음 ❌ */
+            /* ✅ 핵심 4: 설명 한 줄 표기 강제 */
+            white-space: nowrap; 
         }
         
         /* 모바일 화면 맞춤 설정 */
@@ -170,10 +172,9 @@
                 width: 100%;
                 justify-content: center;
             }
-            .info-window {
-                max-width: 260px;
-                padding-bottom: 20px; /* 모바일에서는 하단 패딩 약간 줄임 */
-            }
+            /* 모바일에서는 너무 길어지면 오히려 보기 불편할 수 있으나,
+               요청사항이 "절대" 잘리지 않는 것이므로 설정을 유지합니다.
+               화면 너비보다 긴 가게 이름이 있다면 팝업이 화면 밖으로 나갈 수 있습니다. */
         }
     </style>
 </head>
@@ -304,12 +305,8 @@
                             </div>
                         `;
 
-                        // ✅ 인포윈도우 설정을 안정적인 값으로 변경
-                        const infowindow = new kakao.maps.InfoWindow({ 
-                            content: infoContent, 
-                            removable: true,
-                            disableAutoPan: false // 자동으로 지도 화면 중앙으로 이동 (잘림 방지)
-                        });
+                        // REMOVABLE을 TRUE로 유지하여 'X' 버튼을 활성화
+                        const infowindow = new kakao.maps.InfoWindow({ content: infoContent, removable: true });
                         kakao.maps.event.addListener(marker, 'click', function() {
                             infoWindows.forEach(iw => iw.close());
                             infowindow.open(map, marker);
