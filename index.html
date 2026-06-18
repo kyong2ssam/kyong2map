@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>쿙's 맛집지도</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9f62a7c2ae9655a0199af70d6e14d343&libraries=services"></script>
     
     <style>
@@ -20,37 +21,37 @@
             overflow: hidden;
             background-color: #f5f5f5; 
         }
-        /* 앱 타이틀 */
-        #app-title {
+        
+        /* ✅ 상단 헤더 바 (타이틀 + 필터 통합) ✅ */
+        #header-bar {
             position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 15;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 5px 20px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 18px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            color: #333;
-        }
-        /* 상단 제어바 */
-        #control-bar {
-            position: absolute;
-            top: 50px;
+            top: 15px;
             left: 15px;
-            right: 15px;
+            /* 오른쪽 여백을 주어 너무 길게 늘어나지 않도록 설정 */
             z-index: 10;
             background: rgba(255, 255, 255, 0.95);
-            padding: 12px 15px;
-            border-radius: 8px;
+            padding: 10px 20px;
+            border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             display: flex;
-            flex-wrap: wrap;
             align-items: center;
-            gap: 10px;
+            flex-wrap: wrap;
+            gap: 20px; /* 타이틀과 필터 사이 간격 */
         }
+
+        /* ✅ 타이틀 폰트 및 디자인 수정 */
+        #app-title {
+            font-family: 'Jua', sans-serif; /* 귀여운 폰트 적용 */
+            font-size: 26px;
+            color: #ff6b81; /* 약간 코랄 핑크빛으로 포인트 */
+        }
+
+        .filter-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
         .filter-group {
             display: flex;
             align-items: center;
@@ -58,7 +59,7 @@
         }
         label {
             font-weight: bold;
-            font-size: 14px;
+            font-size: 15px;
             color: #333;
         }
         select {
@@ -68,7 +69,12 @@
             border-radius: 4px;
             outline: none;
             background: white;
+            cursor: pointer;
         }
+        select:focus {
+            border-color: #ff6b81;
+        }
+
         #map {
             width: 100%;
             height: 100%;
@@ -87,10 +93,10 @@
             display: none;
         }
         
-        /* ✅ 인포윈도우 유동적 크기 스타일 ✅ */
+        /* 인포윈도우 스타일 유지 */
         .info-window {
             padding: 15px;
-            width: auto; /* 유동적 너비 */
+            width: auto; 
             min-width: 200px;
             max-width: 320px;
         }
@@ -106,7 +112,6 @@
             font-weight: bold;
             color: #333;
             text-decoration: none;
-            /* ✅ 이름 한 줄 표기 ✅ */
             white-space: nowrap; 
             overflow: hidden;
             text-overflow: ellipsis;
@@ -142,14 +147,23 @@
             font-size: 14px;
             color: #444;
             line-height: 1.6;
-            white-space: pre-wrap; /* 줄바꿈 유지 */
+            white-space: pre-wrap; 
             word-break: break-all;
         }
         
+        /* 모바일 화면 맞춤 설정 */
         @media (max-width: 600px) {
-            #control-bar {
-                top: 50px;
-                padding: 10px;
+            #header-bar {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 12px;
+                gap: 10px;
+                justify-content: center; /* 모바일에서는 가운데 정렬 */
+            }
+            .filter-container {
+                width: 100%;
+                justify-content: center;
             }
             .info-window {
                 max-width: 260px;
@@ -159,20 +173,21 @@
 </head>
 <body>
 
-    <div id="app-title">쿙's 맛집지도</div>
-
-    <div id="control-bar">
-        <div class="filter-group">
-            <label>📍 지역:</label>
-            <select id="region-select" onchange="changeRegion(this.value)">
-                <option value="">불러오는 중...</option>
-            </select>
-        </div>
-        <div class="filter-group">
-            <label>🍴 분류:</label>
-            <select id="category-select" onchange="applyCategoryFilter()">
-                <option value="전체">전체</option>
-            </select>
+    <div id="header-bar">
+        <div id="app-title">쿙's 맛집지도</div>
+        <div class="filter-container">
+            <div class="filter-group">
+                <label>📍 지역:</label>
+                <select id="region-select" onchange="changeRegion(this.value)">
+                    <option value="">불러오는 중...</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>🍴 분류:</label>
+                <select id="category-select" onchange="applyCategoryFilter()">
+                    <option value="전체">전체</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -185,7 +200,7 @@
         let map;
         let markers = [];
         let infoWindows = [];
-        let allStoreData = []; // 필터링을 위해 전체 데이터 저장
+        let allStoreData = []; 
         let geocoder;
 
         function initMap() {
@@ -229,10 +244,7 @@
                 const response = await fetch(`${GAS_API_URL}?sheet=${encodeURIComponent(sheetName)}`);
                 allStoreData = await response.json();
                 
-                // 카테고리 필터 목록 업데이트
                 updateCategoryUI();
-                
-                // 마커 표시
                 renderMarkers(allStoreData);
             } catch (error) {
                 showLoader(false);
