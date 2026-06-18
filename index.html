@@ -17,6 +17,7 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
+            background-color: #f5f5f5; /* 지도가 안 뜰 때를 대비한 배경색 */
         }
         /* 상단 제어바 스타일 */
         #control-bar {
@@ -60,7 +61,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 20;
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.9);
             padding: 20px 40px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -79,7 +80,7 @@
             margin-bottom: 4px;
         }
         .info-rating {
-            font-size: 13px;
+            font-size: 14px;
             color: #FFA500;
             margin-bottom: 6px;
         }
@@ -92,7 +93,7 @@
         .info-link {
             display: inline-block;
             font-size: 12px;
-            color: #03C75A; /* 네이버 시그니처 그린 */
+            color: #03C75A;
             text-decoration: none;
             font-weight: bold;
         }
@@ -108,57 +109,67 @@
         <select id="region-select" onchange="changeRegion(this.value)">
             <option value="강원도">강원도</option>
             <option value="인천">인천</option>
-            <option value="경기도">경기도</option>
         </select>
     </div>
 
     <div id="loader">데이터를 불러오는 중입니다...</div>
-
     <div id="map"></div>
 
     <script>
-        // ---------------- [ 설정 변수 ] ----------------
-        // 1단계에서 복사한 본인의 구글 Apps Script 웹앱 URL을 입력하세요.
+        // ⚠️ 여기에 구글 앱스 스크립트 웹앱 URL을 넣으세요!
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxwo6_TX31cBWDfkJM0MsrUvb0JF5NL-pHdUntl3BSwozEFcT237SGiqKRqjM6gpyuv/exec"; 
         
-        // ---------------- [ 전역 변수 ] ----------------
         let map;
         let markers = [];
         let infoWindows = [];
-        const geocoder = new kakao.maps.services.Geocoder();
+        let geocoder;
 
-        // 1. 지도 초기화
-        const mapContainer = document.getElementById('map');
-        const mapOption = {
-            center: new kakao.maps.LatLng(37.8228, 128.1555), // 초기 중심 좌표 (강원도 중심 부근)
-            level: 10 // 확대 레벨
-        };
-        map = new kakao.maps.Map(mapContainer, mapOption);
+        // 지도를 렌더링하는 초기화 함수
+        function initMap() {
+            try {
+                const mapContainer = document.getElementById('map');
+                const mapOption = {
+                    center: new kakao.maps.LatLng(37.8228, 128.1555), // 초기 중심 좌표 (강원도)
+                    level: 10
+                };
+                map = new kakao.maps.Map(mapContainer, mapOption);
+                geocoder = new kakao.maps.services.Geocoder();
+                
+                // 지도 로딩이 성공하면 데이터 불러오기 시작
+                fetchStoreData("강원도");
+            } catch (error) {
+                console.error("지도 로딩 실패:", error);
+                alert("카카오맵을 불러오지 못했습니다. API 키나 플랫폼 도메인 등록을 확인해주세요.");
+            }
+        }
 
-        // 첫 실행 시 기본값인 '강원도' 데이터를 가져옴
         window.onload = function() {
-            fetchStoreData("강원도");
+            // 카카오 API 스크립트가 완전히 로드된 후 initMap 실행되도록 안전장치 마련
+            if (typeof kakao !== 'undefined' && kakao.maps) {
+                kakao.maps.load(function() {
+                    initMap();
+                });
+            } else {
+                alert("카카오맵 API 키가 잘못되었거나 도메인 등록이 안 되었습니다.");
+            }
         };
 
-        // 2. 지역 변경 시 호출되는 함수
         function changeRegion(regionName) {
             fetchStoreData(regionName);
         }
 
-        // 3. GAS API로부터 데이터를 비동기로 호출하는 함수
         async function fetchStoreData(sheetName) {
             showLoader(true);
-            clearMap(); // 기존 마커 및 인포윈도우 삭제
+            clearMap();
 
             try {
-                // URL에 쿼리 스트링으로 시트명 전달 (?sheet=강원도)
                 const response = await fetch(`${GAS_API_URL}?sheet=${encodeURIComponent(sheetName)}`);
-                if (!response.ok) throw new Error("네트워크 응답에 문제가 있습니다.");
+                if (!response.ok) throw new Error("네트워크 응답 오류");
                 
                 const stores = await response.json();
                 
                 if(stores.error) {
-                    alert(`해당 시트(${sheetName})를 찾을 수 없거나 데이터가 없습니다. 구글 시트명을 확인해 주세요.`);
+                    alert(`시트명 '${sheetName}'을(를) 찾을 수 없거나 데이터가 없습니다.`);
                     showLoader(false);
                     return;
                 }
@@ -169,87 +180,78 @@
                     return;
                 }
 
-                // 주소를 좌표로 바꾸고 마커를 찍는 메인 로직 실행
                 processStoresGeocoding(stores);
 
             } catch (error) {
                 console.error("데이터 로드 실패:", error);
-                alert("데이터를 가져오는 중 오류가 발생했습니다. 주소 설정 및 GAS 배포 상태를 확인하세요.");
                 showLoader(false);
             }
         }
 
-        // 4. 주소 문자열을 좌표로 변환(지오코딩) 후 마커 표시
         function processStoresGeocoding(stores) {
-            let bounds = new kakao.maps.LatLngBounds(); // 모든 마커를 포함할 수 있도록 지도를 자동 이동시키기 위한 범위 객체
+            let bounds = new kakao.maps.LatLngBounds();
             let processedCount = 0;
+            let successCount = 0;
 
             stores.forEach(store => {
                 if (!store.address) {
                     processedCount++;
-                    checkLoadingComplete(processedCount, stores.length, bounds);
+                    checkLoadingComplete(processedCount, stores.length, bounds, successCount);
                     return;
                 }
 
-                // 카카오맵 주소 검색 API 활용
                 geocoder.addressSearch(store.address, function(result, status) {
                     if (status === kakao.maps.services.Status.OK) {
                         const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
 
-                        // 마커 생성
                         const marker = new kakao.maps.Marker({
                             map: map,
                             position: coords
                         });
                         markers.push(marker);
 
-                        // 정보창(InfoWindow)에 들어갈 HTML 내용 구성
-                        const ratingStars = "⭐".repeat(Math.floor(Number(store.rating) || 0));
+                        // ⭐ 변경된 부분: store.rating 에 입력된 별(예: ⭐⭐⭐)을 그대로 출력
                         const infoContent = `
                             <div class="info-window">
                                 <div class="info-title">${store.name}</div>
-                                <div class="info-rating">${ratingStars} (${store.rating})</div>
-                                <div class="info-desc">${store.description || '소개 없음'}</div>
+                                <div class="info-rating">${store.rating || ''}</div>
+                                <div class="info-desc">${store.description || ''}</div>
                                 ${store.link ? `<a href="${store.link}" target="_blank" class="info-link">네이버 지도 보기 ↗</a>` : ''}
                             </div>
                         `;
 
                         const infowindow = new kakao.maps.InfoWindow({
                             content: infoContent,
-                            removable: true // 닫기 버튼 표시
+                            removable: true
                         });
 
-                        // 마커 클릭 시 정보창 열기 이벤트 등록
                         kakao.maps.event.addListener(marker, 'click', function() {
-                            // 열려있는 다른 인포윈도우는 모두 닫기
                             infoWindows.forEach(iw => iw.close());
                             infowindow.open(map, marker);
                         });
                         
                         infoWindows.push(infowindow);
-                        bounds.extend(coords); // 지도 경계 범위에 좌표 추가
+                        bounds.extend(coords);
+                        successCount++;
                     } else {
-                        console.warn(`주소 변환 실패: ${store.name} (${store.address})`);
+                        console.warn(`주소를 찾을 수 없음: ${store.address}`);
                     }
 
                     processedCount++;
-                    checkLoadingComplete(processedCount, stores.length, bounds);
+                    checkLoadingComplete(processedCount, stores.length, bounds, successCount);
                 });
             });
         }
 
-        // 모든 주소 변환이 끝났는지 체크하고 최종 지도를 조정하는 함수
-        function checkLoadingComplete(count, total, bounds) {
+        function checkLoadingComplete(count, total, bounds, successCount) {
             if (count === total) {
                 showLoader(false);
-                // 찍힌 마커들이 있다면 해당 마커들이 한눈에 보이게 지도 중심 및 레벨 변경
-                if (markers.length > 0) {
+                if (successCount > 0) {
                     map.setBounds(bounds);
                 }
             }
         }
 
-        // 기존에 지도에 있던 마커와 인포윈도우 청소
         function clearMap() {
             markers.forEach(marker => marker.setMap(null));
             infoWindows.forEach(iw => iw.close());
@@ -257,7 +259,6 @@
             infoWindows = [];
         }
 
-        // 로딩 바 On/Off
         function showLoader(show) {
             document.getElementById('loader').style.display = show ? 'block' : 'none';
         }
