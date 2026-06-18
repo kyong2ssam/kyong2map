@@ -133,7 +133,6 @@
             color: #666;
             margin-bottom: 4px;
             display: block;
-            /* ✅ 핵심 수정: 주소 역시 절대 줄바꿈 없이 한 줄로 강제 표기되도록 수정 */
             white-space: nowrap;
         }
         .info-parking {
@@ -209,6 +208,12 @@
                 };
                 map = new kakao.maps.Map(mapContainer, mapOption);
                 geocoder = new kakao.maps.services.Geocoder();
+
+                // ✅ 수정 요청 반영 1: 지도 빈 영역 클릭 시 열려있는 모든 팝업창 닫기
+                kakao.maps.event.addListener(map, 'click', function() {
+                    closeAllInfoWindows();
+                });
+
                 fetchSheetNames();
             } catch (error) {
                 alert("지도 로딩 실패. API 키와 도메인 설정을 확인하세요.");
@@ -296,9 +301,13 @@
                         `;
 
                         const infowindow = new kakao.maps.InfoWindow({ content: infoContent, removable: true });
+                        
                         kakao.maps.event.addListener(marker, 'click', function() {
-                            infoWindows.forEach(iw => iw.close());
+                            closeAllInfoWindows();
                             infowindow.open(map, marker);
+                            
+                            // ✅ 수정 요청 반영 2: 마커 클릭 시 해당 마커 위치가 화면의 정중앙에 오도록 부드럽게 이동
+                            map.panTo(coords); 
                         });
                         infoWindows.push(infowindow);
                         bounds.extend(coords);
@@ -313,7 +322,18 @@
         }
 
         function changeRegion(regionName) { fetchStoreData(regionName); }
-        function clearMap() { markers.forEach(m => m.setMap(null)); infoWindows.forEach(i => i.close()); markers = []; infoWindows = []; }
+        
+        // ✅ 열려있는 모든 인포윈도우를 일괄로 닫아주는 편의 함수
+        function closeAllInfoWindows() {
+            infoWindows.forEach(iw => iw.close());
+        }
+
+        function clearMap() { 
+            markers.forEach(m => m.setMap(null)); 
+            closeAllInfoWindows(); 
+            markers = []; 
+            infoWindows = []; 
+        }
         function showLoader(show) { document.getElementById('loader').style.display = show ? 'block' : 'none'; }
 
         window.onload = function() {
