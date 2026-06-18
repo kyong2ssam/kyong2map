@@ -12,16 +12,14 @@
             margin: 0;
             padding: 0;
             font-family: 'Malgun Gothic', dotum, sans-serif;
-            /* ✅ 전체 글씨 크기 확대 */
             font-size: 16px; 
         }
         body, html {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #f5f5f5; /* 지도가 안 뜰 때를 대비한 배경색 */
+            background-color: #f5f5f5; 
         }
-        /* 상단 제어바 스타일 */
         #control-bar {
             position: absolute;
             top: 15px;
@@ -37,13 +35,11 @@
         }
         label {
             font-weight: bold;
-            /* ✅ 가독성을 위해 라벨 크기 확대 */
             font-size: 16px; 
             color: #333;
         }
         select {
             padding: 6px 12px;
-            /* ✅ 가독성을 위해 선택박스 크기 확대 */
             font-size: 16px; 
             border: 1px solid #ccc;
             border-radius: 4px;
@@ -53,12 +49,10 @@
         select:focus {
             border-color: #4A90E2;
         }
-        /* 지도 영역 */
         #map {
             width: 100%;
             height: 100%;
         }
-        /* 로딩 스피너 */
         #loader {
             position: absolute;
             top: 50%;
@@ -73,7 +67,7 @@
             display: none;
         }
         
-        /* ✅ ✅ ✅ 카카오맵 인포윈도우 커스텀 스타일 대폭 수정 ✅ ✅ ✅ */
+        /* 인포윈도우 스타일 */
         .info-window {
             padding: 15px;
             min-width: 250px;
@@ -103,6 +97,13 @@
         .info-address {
             font-size: 14px;
             color: #666;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .info-parking {
+            font-size: 13px;
+            color: #2b70c9;
+            font-weight: bold;
             margin-bottom: 10px;
             display: block;
         }
@@ -111,11 +112,9 @@
             color: #666;
             margin-bottom: 12px;
             line-height: 1.6;
-            /* ✅ 구글 시트 줄바꿈 유지 ✅ */
             white-space: pre-wrap;
         }
         
-        /* ✅ 모바일 전용 스타일 추가 ✅ */
         @media (max-width: 600px) {
             #control-bar {
                 top: 10px;
@@ -144,6 +143,9 @@
             .info-address, .info-desc {
                 font-size: 12px;
             }
+            .info-parking {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
@@ -152,8 +154,7 @@
     <div id="control-bar">
         <label for="region-select">📍 지역 선택 :</label>
         <select id="region-select" onchange="changeRegion(this.value)">
-            <option value="강원도">강원도</option>
-            <option value="인천">인천</option>
+            <option value="">불러오는 중...</option>
         </select>
     </div>
 
@@ -161,7 +162,7 @@
     <div id="map"></div>
 
     <script>
-        // ⚠️ 여기에 구글 앱스 스크립트 웹앱 URL을 넣으세요!
+        // ⚠️ 여기에 새로 배포한 구글 앱스 스크립트 웹앱 URL을 넣으세요!
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxwo6_TX31cBWDfkJM0MsrUvb0JF5NL-pHdUntl3BSwozEFcT237SGiqKRqjM6gpyuv/exec"; 
         
         let map;
@@ -169,19 +170,19 @@
         let infoWindows = [];
         let geocoder;
 
-        // 지도를 렌더링하는 초기화 함수
         function initMap() {
             try {
                 const mapContainer = document.getElementById('map');
                 const mapOption = {
-                    center: new kakao.maps.LatLng(37.8228, 128.1555), // 초기 중심 좌표 (강원도 중심 부근)
+                    center: new kakao.maps.LatLng(37.5665, 126.9780), // 초기 중심 좌표
                     level: 10
                 };
                 map = new kakao.maps.Map(mapContainer, mapOption);
                 geocoder = new kakao.maps.services.Geocoder();
                 
-                // 지도 로딩이 성공하면 데이터 불러오기 시작
-                fetchStoreData("강원도");
+                // ✅ 지도 로딩이 끝나면 가장 먼저 구글 시트의 "시트 이름 목록"을 가져옵니다.
+                fetchSheetNames();
+
             } catch (error) {
                 console.error("지도 로딩 실패:", error);
                 alert("카카오맵을 불러오지 못했습니다. API 키나 플랫폼 도메인 등록을 확인해주세요.");
@@ -189,7 +190,6 @@
         }
 
         window.onload = function() {
-            // 카카오 API 스크립트가 완전히 로드된 후 initMap 실행되도록 안전장치 마련
             if (typeof kakao !== 'undefined' && kakao.maps) {
                 kakao.maps.load(function() {
                     initMap();
@@ -198,6 +198,40 @@
                 alert("카카오맵 API 키가 잘못되었거나 도메인 등록이 안 되었습니다.");
             }
         };
+
+        // ✅ 구글 시트의 시트 목록을 가져와서 드롭다운을 만드는 함수
+        async function fetchSheetNames() {
+            showLoader(true);
+            try {
+                // ?action=getSheets 를 붙여서 시트 목록만 요청
+                const response = await fetch(`${GAS_API_URL}?action=getSheets`);
+                if (!response.ok) throw new Error("시트 목록을 가져오는 데 실패했습니다.");
+                
+                const sheetNames = await response.json();
+                const selectElement = document.getElementById('region-select');
+                
+                // 드롭다운 초기화 및 시트명 채우기
+                selectElement.innerHTML = '';
+                sheetNames.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    selectElement.appendChild(option);
+                });
+
+                // 목록을 다 채웠으면, 첫 번째 시트의 데이터를 불러옴
+                if (sheetNames.length > 0) {
+                    fetchStoreData(sheetNames[0]);
+                } else {
+                    showLoader(false);
+                    alert("구글 시트에 탭(시트)이 존재하지 않습니다.");
+                }
+
+            } catch (error) {
+                console.error("시트 목록 로드 실패:", error);
+                showLoader(false);
+            }
+        }
 
         function changeRegion(regionName) {
             fetchStoreData(regionName);
@@ -255,7 +289,6 @@
                         });
                         markers.push(marker);
 
-                        // ✅ ✅ ✅ 인포윈도우 HTML 내용 구성 (대폭 수정) ✅ ✅ ✅
                         const infoContent = `
                             <div class="info-window">
                                 <div class="info-header">
@@ -263,6 +296,7 @@
                                     <span class="info-rating">${store.rating || ''}</span>
                                 </div>
                                 <span class="info-address">${store.address}</span>
+                                ${store.parking ? `<span class="info-parking">🚗 주차: ${store.parking}</span>` : ''}
                                 <div class="info-desc">${store.description || ''}</div>
                             </div>
                         `;
