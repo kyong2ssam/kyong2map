@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>쿙's 맛집지도</title>
     <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9f62a7c2ae9655a0199af70d6e14d343&libraries=services"></script>
+    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?9f62a7c2ae9655a0199af70d6e14d343"></script>
     
     <style>
         * {
@@ -197,7 +197,6 @@
         let markers = [];
         let infoWindows = [];
         let allStoreData = []; 
-        let geocoder;
 
         function initMap() {
             try {
@@ -207,9 +206,7 @@
                     level: 10
                 };
                 map = new kakao.maps.Map(mapContainer, mapOption);
-                geocoder = new kakao.maps.services.Geocoder();
 
-                // ✅ 수정 요청 반영 1: 지도 빈 영역 클릭 시 열려있는 모든 팝업창 닫기
                 kakao.maps.event.addListener(map, 'click', function() {
                     closeAllInfoWindows();
                 });
@@ -274,56 +271,56 @@
             renderMarkers(filteredData);
         }
 
+        // ✅ 고급 방법 최적화: 무겁던 비동기 주소 변환 루프를 전부 없애고 즉시 마커를 생성합니다.
         function renderMarkers(stores) {
             let bounds = new kakao.maps.LatLngBounds();
-            let count = 0;
+            let validMarkerCount = 0;
 
             if(stores.length === 0) { showLoader(false); return; }
 
             stores.forEach(store => {
-                geocoder.addressSearch(store.address, function(result, status) {
-                    if (status === kakao.maps.services.Status.OK) {
-                        const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
-                        const marker = new kakao.maps.Marker({ map: map, position: coords });
-                        markers.push(marker);
+                // 시트에 위도, 경도 값이 정상적으로 적혀있을 때만 지도에 찍음
+                if (store.lat && store.lng) {
+                    const coords = new kakao.maps.LatLng(store.lat, store.lng);
+                    const marker = new kakao.maps.Marker({ map: map, position: coords });
+                    markers.push(marker);
 
-                        const infoContent = `
-                            <div class="info-window">
-                                <span class="info-category">${store.category || '기타'}</span>
-                                <div class="info-header">
-                                    <a href="${store.link}" target="_blank" class="info-name-link">${store.name}</a>
-                                    <span class="info-rating">${store.rating || ''}</span>
-                                </div>
-                                <span class="info-address">${store.address}</span>
-                                ${store.parking ? `<span class="info-parking">🚗 ${store.parking}</span>` : ''}
-                                <div class="info-desc">${store.description || ''}</div>
+                    const infoContent = `
+                        <div class="info-window">
+                            <span class="info-category">${store.category || '기타'}</span>
+                            <div class="info-header">
+                                <a href="${store.link}" target="_blank" class="info-name-link">${store.name}</a>
+                                <span class="info-rating">${store.rating || ''}</span>
                             </div>
-                        `;
+                            <span class="info-address">${store.address}</span>
+                            ${store.parking ? `<span class="info-parking">🚗 ${store.parking}</span>` : ''}
+                            <div class="info-desc">${store.description || ''}</div>
+                        </div>
+                    `;
 
-                        const infowindow = new kakao.maps.InfoWindow({ content: infoContent, removable: true });
+                    const infowindow = new kakao.maps.InfoWindow({ content: infoContent, removable: true });
+                    
+                    kakao.maps.event.addListener(marker, 'click', function() {
+                        closeAllInfoWindows();
+                        infowindow.open(map, marker);
                         
-                        kakao.maps.event.addListener(marker, 'click', function() {
-                            closeAllInfoWindows();
-                            infowindow.open(map, marker);
-                            
-                            // ✅ 수정 요청 반영 2: 마커 클릭 시 해당 마커 위치가 화면의 정중앙에 오도록 부드럽게 이동
-                            map.panTo(coords); 
-                        });
-                        infoWindows.push(infowindow);
-                        bounds.extend(coords);
-                    }
-                    count++;
-                    if (count === stores.length) {
-                        showLoader(false);
-                        if(markers.length > 0) map.setBounds(bounds);
-                    }
-                });
+                        // ✅ 수정 요청 반영: 화면 중앙으로 이동하면서 한눈에 보이게 지도 확대 (Level 4)
+                        map.setLevel(4);
+                        map.panTo(coords); 
+                    });
+                    infoWindows.push(infowindow);
+                    bounds.extend(coords);
+                    validMarkerCount++;
+                }
             });
+
+            showLoader(false);
+            // 좌표 데이터가 유효한 마커가 있다면 해당 마커들이 한눈에 들어오게 지도 범위 조정
+            if(validMarkerCount > 0) map.setBounds(bounds);
         }
 
         function changeRegion(regionName) { fetchStoreData(regionName); }
         
-        // ✅ 열려있는 모든 인포윈도우를 일괄로 닫아주는 편의 함수
         function closeAllInfoWindows() {
             infoWindows.forEach(iw => iw.close());
         }
