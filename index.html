@@ -542,9 +542,16 @@ function updateSidebarList(items) {
         map.panBy(0, -100); 
     }, 100);
 }
+// ✅ 키보드로 글자를 칠 때 실행되는 함수
 function handleSearchInput() {
     isListOpen = true; // 🔓 스위치 켜기
     applyFilters();
+    
+    // ✅ 추가: 검색창이 완전히 비워졌을 때(X 버튼 누르거나 다 지웠을 때) 열려있던 팝업창 모두 닫기
+    const searchKeyword = document.getElementById('search-input').value.trim();
+    if (searchKeyword === "") {
+        closeAllInfoWindows();
+    }
 }
         function changeRegion(regionName) {
             showLoader(true);
