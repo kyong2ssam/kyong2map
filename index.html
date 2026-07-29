@@ -185,6 +185,31 @@ input[type="text"]:focus {
                 justify-content: center;
             }
         }
+        /* 사이드바 전체 틀 */
+#search-sidebar {
+    position: absolute;
+    top: 80px; /* 상단 검색바 아래쪽에 위치 */
+    left: 15px;
+    z-index: 15;
+    background: rgba(255, 255, 255, 0.95);
+    width: 300px;
+    max-height: calc(100% - 100px); /* 화면 아래로 넘어가지 않게 방지 */
+    overflow-y: auto; /* 리스트가 길면 스크롤 생성 */
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    padding: 10px;
+}
+
+/* 리스트 안의 각 맛집 항목 */
+.list-item {
+    padding: 12px 10px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+.list-item:hover { background-color: #f0f0f0; border-radius: 8px; }
+.list-item:last-child { border-bottom: none; }
+.list-item-name { font-weight: bold; font-size: 16px; color: #333; }
+.list-item-address { font-size: 13px; color: #666; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -218,6 +243,7 @@ input[type="text"]:focus {
     </div>
 
     <div id="loader">데이터를 불러오는 중입니다...</div>
+    <div id="search-sidebar" style="display: none;"></div>
     <div id="map"></div>
 
     <script>
@@ -417,13 +443,14 @@ input[type="text"]:focus {
 
         // 최종적으로 보여줄지 숨길지 결정
         if (isVisible) {
-            item.marker.setMap(map); 
+            item.marker.setMap(map);
+            visibleItems.push(item);
         } else {
             item.marker.setMap(null); 
             item.infowindow.close(); 
         }
     });
-    
+    updateSidebarList(visibleItems);
     showLoader(false);
 }
 
