@@ -269,7 +269,7 @@ select:focus, input[type="search"]:focus {
             </div>
             <div class="filter-group">
                 <label>🔍 검색:</label>
-                <input type="search" id="search-input" placeholder="맛집이나 설명 검색..." oninput="applyFilters(true)" onclick="showSearchList()">
+                <input type="search" id="search-input" placeholder="맛집이나 설명 검색..." oninput="handleSearchInput()" onclick="showSearchList()">
                 <div id="search-sidebar" style="display: none;"></div>
             </div>
         </div>
@@ -285,6 +285,7 @@ select:focus, input[type="search"]:focus {
         let allStoreData = []; 
         let storeMarkers = []; 
         let isDataLoaded = false; 
+        let isListOpen = false; 
 
         function initMap() {
             try {
@@ -454,7 +455,7 @@ select:focus, input[type="search"]:focus {
             applyFilters();
         }
 
-        function applyFilters(isUserInput = false) {
+        function applyFilters() {
             const selectedRegion = document.getElementById('region-select').value;
             const selectedCategory = document.getElementById('category-select').value;
             const zoomLevel = map.getLevel();
@@ -491,41 +492,41 @@ select:focus, input[type="search"]:focus {
                 }
             });
             
-            updateSidebarList(visibleItems, isUserInput);
+            updateSidebarList(visibleItems); 
             showLoader(false);
         }
 
-        function updateSidebarList(items, isUserInput = false) {
-            const sidebar = document.getElementById('search-sidebar');
-            const searchKeyword = document.getElementById('search-input') ? document.getElementById('search-input').value.trim() : "";
+        // 괄호 안에 isUserInput = false 지우기!
+function updateSidebarList(items) { 
+    const sidebar = document.getElementById('search-sidebar');
+    const searchKeyword = document.getElementById('search-input') ? document.getElementById('search-input').value.trim() : "";
 
-            if (searchKeyword === "") {
-                sidebar.style.display = 'none';
-                return;
-            }
+    // ✅ 스위치가 꺼져있거나 검색어가 없으면 창 닫고 함수 종료
+    if (searchKeyword === "" || !isListOpen) {
+        sidebar.style.display = 'none';
+        return;
+    }
 
-            if (items.length === 0) {
-                sidebar.innerHTML = "<div style='padding:15px; text-align:center; color:#666; font-size:14px;'>검색 결과가 없습니다.</div>";
-                if (isUserInput) {
-    sidebar.style.display = 'block';
+    if (items.length === 0) {
+        sidebar.innerHTML = "<div style='padding:15px; text-align:center; color:#666; font-size:14px;'>검색 결과가 없습니다.</div>";
+        sidebar.style.display = 'block'; // 여기는 스위치 조건 필요 없이 그냥 block
+        return;
+    }
+
+    let html = "";
+    items.forEach((item, index) => {
+        html += `
+            <div class="list-item" onclick="triggerMarkerClick(${index})">
+                <div class="list-item-name">${item.store.name}</div>
+                <div class="list-item-address">${item.store.address}</div>
+            </div>
+        `;
+    });
+    
+    sidebar.innerHTML = html;
+    sidebar.style.display = 'block'; // 여기도 그냥 block
+    window.currentVisibleItems = items;
 }
-                return;
-            }
-
-            let html = "";
-            items.forEach((item, index) => {
-                html += `
-                    <div class="list-item" onclick="triggerMarkerClick(${index})">
-                        <div class="list-item-name">${item.store.name}</div>
-                        <div class="list-item-address">${item.store.address}</div>
-                    </div>
-                `;
-            });
-            
-            sidebar.innerHTML = html;
-            sidebar.style.display = 'block';
-            window.currentVisibleItems = items;
-        }
 
         function triggerMarkerClick(index) {
     const item = window.currentVisibleItems[index];
@@ -534,15 +535,17 @@ select:focus, input[type="search"]:focus {
     map.setLevel(4);
     map.panTo(item.marker.getPosition());
 
-    // 1. 맛집을 선택하면 검색 리스트 창 숨기기
+    isListOpen = false; // 🔒 스위치 잠금 (지도가 움직여도 리스트가 안 뜸)
     document.getElementById('search-sidebar').style.display = 'none';
 
-    // 2. 모바일 헤더에 팝업창이 가리지 않도록, 0.1초 뒤에 지도를 위로 100픽셀 올려서 마커를 화면 아래쪽으로 내려줌
     setTimeout(() => {
         map.panBy(0, -100); 
     }, 100);
 }
-
+function handleSearchInput() {
+    isListOpen = true; // 🔓 스위치 켜기
+    applyFilters();
+}
         function changeRegion(regionName) {
             showLoader(true);
             
@@ -578,7 +581,8 @@ select:focus, input[type="search"]:focus {
 function showSearchList() {
     const searchKeyword = document.getElementById('search-input').value.trim();
     if (searchKeyword !== "") {
-        document.getElementById('search-sidebar').style.display = 'block';
+        isListOpen = true; // 🔓 스위치 켜기
+        applyFilters();
     }
 }
 
