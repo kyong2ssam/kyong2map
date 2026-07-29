@@ -269,7 +269,7 @@
             </div>
             <div class="filter-group">
                 <label>🔍 검색:</label>
-                <input type="text" id="search-input" placeholder="맛집이나 설명 검색..." onkeyup="applyFilters()">
+                <input type="text" id="search-input" placeholder="맛집이나 설명 검색..." onkeyup="applyFilters()" onclick="showSearchList()">
                 <div id="search-sidebar" style="display: none;"></div>
             </div>
         </div>
@@ -394,11 +394,17 @@
                     const infowindow = new kakao.maps.InfoWindow({ content: infoContent, removable: true });
                     
                     kakao.maps.event.addListener(marker, 'click', function() {
-                        closeAllInfoWindows();
-                        infowindow.open(map, marker);
-                        map.setLevel(4); 
-                        map.panTo(coords); 
-                    });
+    closeAllInfoWindows();
+    infowindow.open(map, marker);
+    map.setLevel(4); 
+    map.panTo(coords); 
+
+    // 열려있던 검색 리스트 닫기 및 모바일 헤더 가림 방지 미세 조정
+    document.getElementById('search-sidebar').style.display = 'none';
+    setTimeout(() => {
+        map.panBy(0, -100); 
+    }, 100);
+});
 
                     storeMarkers.push({
                         store: store,
@@ -520,12 +526,20 @@
         }
 
         function triggerMarkerClick(index) {
-            const item = window.currentVisibleItems[index];
-            closeAllInfoWindows();
-            item.infowindow.open(map, item.marker);
-            map.setLevel(4);
-            map.panTo(item.marker.getPosition());
-        }
+    const item = window.currentVisibleItems[index];
+    closeAllInfoWindows();
+    item.infowindow.open(map, item.marker);
+    map.setLevel(4);
+    map.panTo(item.marker.getPosition());
+
+    // 1. 맛집을 선택하면 검색 리스트 창 숨기기
+    document.getElementById('search-sidebar').style.display = 'none';
+
+    // 2. 모바일 헤더에 팝업창이 가리지 않도록, 0.1초 뒤에 지도를 위로 100픽셀 올려서 마커를 화면 아래쪽으로 내려줌
+    setTimeout(() => {
+        map.panBy(0, -100); 
+    }, 100);
+}
 
         function changeRegion(regionName) {
             showLoader(true);
@@ -558,6 +572,13 @@
         function showLoader(show) { 
             document.getElementById('loader').style.display = show ? 'block' : 'none'; 
         }
+        // ✅ 검색창을 다시 클릭했을 때, 입력된 검색어가 있다면 리스트를 다시 보여주는 함수
+function showSearchList() {
+    const searchKeyword = document.getElementById('search-input').value.trim();
+    if (searchKeyword !== "") {
+        document.getElementById('search-sidebar').style.display = 'block';
+    }
+}
 
         window.onload = function() {
             if (typeof kakao !== 'undefined' && kakao.maps) {
