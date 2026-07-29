@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>쿙's 맛집지도</title>
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9f62a7c2ae9655a0199af70d6e14d343&autoload=false"></script>
     
@@ -76,22 +76,22 @@
             white-space: nowrap;
         }
 
-        select, input[type="text"] {
-            padding: 6px 10px;
-            font-size: 14px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            outline: none;
-            background: white;
-        }
+       select, input[type="search"] {
+    padding: 6px 10px;
+    font-size: 16px; /* ✅ 모바일 강제 확대 방지를 위해 16px로 필수 상향! */
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    outline: none;
+    background: white;
+}
 
-        input[type="text"] {
-            width: 170px;
-        }
+input[type="search"] {
+    width: 170px;
+}
 
-        select:focus, input[type="text"]:focus {
-            border-color: #ff6b81;
-        }
+select:focus, input[type="search"]:focus {
+    border-color: #ff6b81;
+}
 
         #map {
             width: 100%;
@@ -269,7 +269,7 @@
             </div>
             <div class="filter-group">
                 <label>🔍 검색:</label>
-                <input type="text" id="search-input" placeholder="맛집이나 설명 검색..." onkeyup="applyFilters()" onclick="showSearchList()">
+                <input type="search" id="search-input" placeholder="맛집이나 설명 검색..." oninput="applyFilters(true)" onclick="showSearchList()">
                 <div id="search-sidebar" style="display: none;"></div>
             </div>
         </div>
@@ -454,7 +454,7 @@
             applyFilters();
         }
 
-        function applyFilters() {
+        function applyFilters(isUserInput = false) {
             const selectedRegion = document.getElementById('region-select').value;
             const selectedCategory = document.getElementById('category-select').value;
             const zoomLevel = map.getLevel();
@@ -491,11 +491,11 @@
                 }
             });
             
-            updateSidebarList(visibleItems); 
+            updateSidebarList(visibleItems, isUserInput);
             showLoader(false);
         }
 
-        function updateSidebarList(items) {
+        function updateSidebarList(items, isUserInput = false) {
             const sidebar = document.getElementById('search-sidebar');
             const searchKeyword = document.getElementById('search-input') ? document.getElementById('search-input').value.trim() : "";
 
@@ -506,7 +506,9 @@
 
             if (items.length === 0) {
                 sidebar.innerHTML = "<div style='padding:15px; text-align:center; color:#666; font-size:14px;'>검색 결과가 없습니다.</div>";
-                sidebar.style.display = 'block';
+                if (isUserInput) {
+    sidebar.style.display = 'block';
+}
                 return;
             }
 
