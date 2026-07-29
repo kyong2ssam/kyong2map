@@ -4,10 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>쿙's 맛집지도</title>
-    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9f62a7c2ae9655a0199af70d6e14d343&autoload=false"></script>
     
     <style>
+        /* ✅ 1. 요청하신 그리운 몽토리체 웹폰트 완벽 적용 */
+        @font-face {
+            font-family: 'NostalgicMongtori';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-1@1.0/Griun_Mongtori-Rg.woff2') format('woff2');
+            font-weight: normal;
+            font-display: swap;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -37,12 +44,12 @@
             gap: 20px;
         }
 
-        /* ✅ 수정된 제목 디자인: 그리운 몽토리체 폰트 적용 및 색상 유지 */
+        /* ✅ 폰트 적용 및 사이즈/색상 맞춤 */
         #app-title {
-            font-family: 'Mongtoryche', serif; 
-            font-size: 28px; /* 폰트 특성에 맞춰 크기 살짝 조정 */
+            font-family: 'NostalgicMongtori', sans-serif; 
+            font-size: 28px; 
             color: #ff6b81;
-            font-weight: 500;
+            font-weight: normal;
         }
 
         .filter-container {
@@ -96,22 +103,20 @@
             display: none;
         }
         
-        /* ✅ 사이드바(검색 결과 리스트) 영역 스타일 추가 */
         #search-sidebar {
             position: absolute;
-            top: 80px; /* 통합 바 아래에 위치 */
+            top: 80px; 
             left: 15px;
             z-index: 15;
             background: rgba(255, 255, 255, 0.95);
             width: 300px;
-            max-height: calc(100% - 100px); /* 화면 아래로 안 넘치게 */
-            overflow-y: auto; /* 리스트 길면 스크롤 */
+            max-height: calc(100% - 100px); 
+            overflow-y: auto; 
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             padding: 10px;
         }
 
-        /* 리스트 안의 각 맛집 항목 */
         .list-item {
             padding: 12px 10px;
             border-bottom: 1px solid #eee;
@@ -123,7 +128,6 @@
         .list-item-name { font-weight: bold; font-size: 16px; color: #333; }
         .list-item-address { font-size: 13px; color: #666; margin-top: 4px; }
         
-        /* 지난번 약속한 팝업창 및 내어쓰기 디자인 완벽 유지 */
         .info-window {
             padding: 10px 35px 10px 10px; 
             width: max-content; 
@@ -243,6 +247,7 @@
         let map;
         let allStoreData = []; 
         let storeMarkers = []; 
+        let isDataLoaded = false; // ✅ 추가: 데이터 로딩 완료 상태를 추적하는 안전장치
 
         function initMap() {
             try {
@@ -257,8 +262,8 @@
                     closeAllInfoWindows();
                 });
 
-                // ✅ idle 이벤트: 지도 이동/확대 완료 시 스마트 감지 유지
                 kakao.maps.event.addListener(map, 'idle', function() {
+                    if (!isDataLoaded) return; // ✅ 추가: 데이터가 불러와지기 전에는 지도 이동 감지를 멈춰서 에러 방지
                     const zoomLevel = map.getLevel();
                     if (zoomLevel < 9) {
                         autoUpdateRegionByView();
@@ -276,8 +281,10 @@
         async function fetchSheetNamesAndData() {
             showLoader(true);
             try {
-                const responseSheets = await fetch(`${GAS_API_URL}?action=getSheets`);
+                const responseSheets = await fetch(`${GAS_API_URL}?action=getSheets`, { redirect: 'follow' });
+                if (!responseSheets.ok) throw new Error("시트 통신 에러");
                 const sheetNames = await responseSheets.json();
+                
                 const selectElement = document.getElementById('region-select');
                 selectElement.innerHTML = '';
                 sheetNames.forEach(name => {
@@ -287,10 +294,12 @@
                     selectElement.appendChild(option);
                 });
 
-                const responseData = await fetch(GAS_API_URL);
+                const responseData = await fetch(GAS_API_URL, { redirect: 'follow' });
+                if (!responseData.ok) throw new Error("데이터 통신 에러");
                 allStoreData = await responseData.json();
                 
                 initializeMarkers(); 
+                isDataLoaded = true; // ✅ 통신 완료! 이제부터 기능 정상 작동
 
                 if (sheetNames.length > 0) {
                     updateCategoryUI();
@@ -298,6 +307,9 @@
                 }
             } catch (error) {
                 showLoader(false);
+                // ✅ 추가: 왜 무한 로딩이 걸렸는지 명확하게 알려주는 경고창 
+                alert("🚨 데이터를 불러오지 못했습니다!\n(무한 로딩 원인)\n\n구글 앱스 스크립트 '권한'이 막혀있습니다.\nApps Script 화면 우측 상단 [배포] -> [새 배포]에서\n'액세스 권한'을 반드시 [모든 사용자]로 변경해서 다시 배포해주세요!");
+                console.error("Fetch 에러: ", error);
             }
         }
 
@@ -322,7 +334,7 @@
 
             allStoreData.forEach(store => {
                 if (store.lat && store.lng) {
-                    const coords = new kakao.maps.LatLng(store.lat, store.lng);
+                    const coords = new kakao.maps.LatLng(parseFloat(store.lat), parseFloat(store.lng));
                     const marker = new kakao.maps.Marker({ position: coords }); 
 
                     const infoContent = `
@@ -400,29 +412,25 @@
             applyFilters();
         }
 
-        // ✅ 필터 시스템 완벽 복구: 중복된 필터 코드 지우고, 사이드바 바구니만 활용하여 성능 최적화
         function applyFilters() {
             const selectedRegion = document.getElementById('region-select').value;
             const selectedCategory = document.getElementById('category-select').value;
             const zoomLevel = map.getLevel();
             const searchKeyword = document.getElementById('search-input') ? document.getElementById('search-input').value.trim().toLowerCase() : "";
 
-            let visibleItems = []; // 보여지는 마커를 담을 바구니 (사이드바 리스트 그리기용)
+            let visibleItems = []; 
 
             storeMarkers.forEach(item => {
                 let isVisible = true;
 
-                // 1. 카테고리 필터
                 if (selectedCategory !== "전체" && item.store.category !== selectedCategory) {
                     isVisible = false;
                 }
                 
-                // 2. 줌 레벨 및 지역 필터
                 if (zoomLevel < 9 && item.store.region !== selectedRegion) {
                     isVisible = false;
                 }
 
-                // 3. 검색어 필터
                 if (searchKeyword !== "") {
                     const storeName = item.store.name ? item.store.name.toLowerCase() : "";
                     const storeDesc = item.store.description ? item.store.description.toLowerCase() : "";
@@ -433,40 +441,35 @@
                 }
 
                 if (isVisible) {
-                    item.marker.setMap(map); // 조건 맞으면 보여줌
-                    visibleItems.push(item); // 사이드바 바구니에 담음
+                    item.marker.setMap(map); 
+                    visibleItems.push(item); 
                 } else {
                     item.marker.setMap(null); 
                     item.infowindow.close(); 
                 }
             });
             
-            updateSidebarList(visibleItems); // ✅ 살아남은 바구니를 사이드바 리스트로 그림
+            updateSidebarList(visibleItems); 
             showLoader(false);
         }
 
-        // ✅ 사이드바에 검색 결과를 HTML 리스트로 그려주는 함수
         function updateSidebarList(items) {
             const sidebar = document.getElementById('search-sidebar');
             const searchKeyword = document.getElementById('search-input') ? document.getElementById('search-input').value.trim() : "";
 
-            // 검색어 없을 때는 사이드바 숨겨서 화면 넓게 씀
             if (searchKeyword === "") {
                 sidebar.style.display = 'none';
                 return;
             }
 
-            // 검색 결과 없을 때
             if (items.length === 0) {
                 sidebar.innerHTML = "<div style='padding:20px; text-align:center; color:#666;'>검색 결과가 없습니다.</div>";
                 sidebar.style.display = 'block';
                 return;
             }
 
-            // 검색 결과 있으면 리스트 생성
             let html = "";
             items.forEach((item, index) => {
-                // 리스트 클릭 시 triggerMarkerClick 함수 실행
                 html += `
                     <div class="list-item" onclick="triggerMarkerClick(${index})">
                         <div class="list-item-name">${item.store.name}</div>
@@ -477,12 +480,9 @@
             
             sidebar.innerHTML = html;
             sidebar.style.display = 'block';
-            
-            // 클릭 이벤트 위해 현재 리스트를 전역 변수에 저장
             window.currentVisibleItems = items;
         }
 
-        // ✅ 리스트 항목 클릭 시, 해당 마커 팝업창 열고 화면 중앙 이동하는 함수
         function triggerMarkerClick(index) {
             const item = window.currentVisibleItems[index];
             closeAllInfoWindows();
@@ -527,6 +527,10 @@
             if (typeof kakao !== 'undefined' && kakao.maps) {
                 kakao.maps.load(() => initMap());
             }
+        };
+    </script>
+</body>
+</html>
         };
     </script>
 </body>
