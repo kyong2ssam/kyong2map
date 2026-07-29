@@ -7,7 +7,7 @@
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9f62a7c2ae9655a0199af70d6e14d343&autoload=false"></script>
     
     <style>
-        /* ✅ 1. 요청하신 그리운 몽토리체 웹폰트 완벽 적용 */
+        /* ✅ 그리운 몽토리체 웹폰트 설정 */
         @font-face {
             font-family: 'NostalgicMongtori';
             src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-1@1.0/Griun_Mongtori-Rg.woff2') format('woff2');
@@ -29,58 +29,66 @@
             background-color: #f5f5f5; 
         }
         
+        /* ✅ 상단 바 기본 디자인 (PC/태블릿) */
         #header-bar {
             position: absolute;
             top: 15px;
             left: 15px;
             z-index: 10;
             background: rgba(255, 255, 255, 0.95);
-            padding: 10px 20px;
+            padding: 12px 20px;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             display: flex;
             align-items: center;
             flex-wrap: wrap;
-            gap: 20px;
+            gap: 15px;
+            max-width: calc(100% - 30px);
         }
 
-        /* ✅ 폰트 적용 및 사이즈/색상 맞춤 */
+        /* ✅ 그리운 몽토리체 타이틀 */
         #app-title {
             font-family: 'NostalgicMongtori', sans-serif; 
             font-size: 28px; 
             color: #ff6b81;
             font-weight: normal;
+            white-space: nowrap;
         }
 
         .filter-container {
             display: flex;
             align-items: center;
-            gap: 15px;
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .filter-group {
             display: flex;
             align-items: center;
             gap: 5px;
+            position: relative; /* 검색 드롭다운의 기준 위치 */
         }
+
         label {
             font-weight: bold;
             font-size: 15px;
             color: #333;
+            white-space: nowrap;
         }
+
         select, input[type="text"] {
             padding: 6px 10px;
             font-size: 14px;
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: 6px;
             outline: none;
             background: white;
-            cursor: pointer;
         }
+
         input[type="text"] {
-            width: 160px;
-            cursor: text;
+            width: 170px;
         }
+
         select:focus, input[type="text"]:focus {
             border-color: #ff6b81;
         }
@@ -89,6 +97,7 @@
             width: 100%;
             height: 100%;
         }
+
         #loader {
             position: absolute;
             top: 50%;
@@ -103,31 +112,35 @@
             display: none;
         }
         
+        /* ✅ 요청사항 반영: 검색창 바로 밑으로 깔끔하게 뜨는 드롭다운 형태의 검색 결과 리스트 */
         #search-sidebar {
             position: absolute;
-            top: 80px; 
-            left: 15px;
-            z-index: 15;
-            background: rgba(255, 255, 255, 0.95);
-            width: 300px;
-            max-height: calc(100% - 100px); 
-            overflow-y: auto; 
+            top: calc(100% + 8px);
+            right: 0;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.98);
+            width: 320px;
+            max-height: 350px;
+            overflow-y: auto;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            padding: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            padding: 8px;
+            border: 1px solid #e2e2e2;
         }
 
         .list-item {
-            padding: 12px 10px;
+            padding: 10px 12px;
             border-bottom: 1px solid #eee;
             cursor: pointer;
             border-radius: 8px;
+            transition: background-color 0.15s ease;
         }
-        .list-item:hover { background-color: #f0f0f0; }
+        .list-item:hover { background-color: #fff0f3; }
         .list-item:last-child { border-bottom: none; }
-        .list-item-name { font-weight: bold; font-size: 16px; color: #333; }
-        .list-item-address { font-size: 13px; color: #666; margin-top: 4px; }
+        .list-item-name { font-weight: bold; font-size: 15px; color: #333; }
+        .list-item-address { font-size: 12px; color: #666; margin-top: 3px; }
         
+        /* 인포윈도우 스타일 완벽 유지 */
         .info-window {
             padding: 10px 35px 10px 10px; 
             width: max-content; 
@@ -197,18 +210,42 @@
             white-space: pre; 
         }
         
+        /* ✅ 모바일 완벽 대응 반응형 CSS */
         @media (max-width: 600px) {
             #header-bar {
                 top: 10px;
                 left: 10px;
                 right: 10px;
-                padding: 12px;
+                max-width: none;
+                padding: 10px 14px;
                 gap: 10px;
-                justify-content: center;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            #app-title {
+                text-align: center;
+                font-size: 24px;
             }
             .filter-container {
                 width: 100%;
-                justify-content: center;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .filter-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+            select, input[type="text"] {
+                flex: 1;
+                width: 100% !important;
+            }
+            #search-sidebar {
+                position: absolute;
+                top: calc(100% + 6px);
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-height: 250px;
             }
         }
     </style>
@@ -233,12 +270,12 @@
             <div class="filter-group">
                 <label>🔍 검색:</label>
                 <input type="text" id="search-input" placeholder="맛집이나 설명 검색..." onkeyup="applyFilters()">
+                <div id="search-sidebar" style="display: none;"></div>
             </div>
         </div>
     </div>
 
     <div id="loader">데이터를 불러오는 중입니다...</div>
-    <div id="search-sidebar" style="display: none;"></div>
     <div id="map"></div>
 
     <script>
@@ -247,7 +284,7 @@
         let map;
         let allStoreData = []; 
         let storeMarkers = []; 
-        let isDataLoaded = false; // ✅ 추가: 데이터 로딩 완료 상태를 추적하는 안전장치
+        let isDataLoaded = false; 
 
         function initMap() {
             try {
@@ -263,7 +300,7 @@
                 });
 
                 kakao.maps.event.addListener(map, 'idle', function() {
-                    if (!isDataLoaded) return; // ✅ 추가: 데이터가 불러와지기 전에는 지도 이동 감지를 멈춰서 에러 방지
+                    if (!isDataLoaded) return; 
                     const zoomLevel = map.getLevel();
                     if (zoomLevel < 9) {
                         autoUpdateRegionByView();
@@ -299,7 +336,7 @@
                 allStoreData = await responseData.json();
                 
                 initializeMarkers(); 
-                isDataLoaded = true; // ✅ 통신 완료! 이제부터 기능 정상 작동
+                isDataLoaded = true; 
 
                 if (sheetNames.length > 0) {
                     updateCategoryUI();
@@ -307,7 +344,6 @@
                 }
             } catch (error) {
                 showLoader(false);
-                // ✅ 추가: 왜 무한 로딩이 걸렸는지 명확하게 알려주는 경고창 
                 alert("🚨 데이터를 불러오지 못했습니다!\n(무한 로딩 원인)\n\n구글 앱스 스크립트 '권한'이 막혀있습니다.\nApps Script 화면 우측 상단 [배포] -> [새 배포]에서\n'액세스 권한'을 반드시 [모든 사용자]로 변경해서 다시 배포해주세요!");
                 console.error("Fetch 에러: ", error);
             }
@@ -463,7 +499,7 @@
             }
 
             if (items.length === 0) {
-                sidebar.innerHTML = "<div style='padding:20px; text-align:center; color:#666;'>검색 결과가 없습니다.</div>";
+                sidebar.innerHTML = "<div style='padding:15px; text-align:center; color:#666; font-size:14px;'>검색 결과가 없습니다.</div>";
                 sidebar.style.display = 'block';
                 return;
             }
@@ -527,10 +563,6 @@
             if (typeof kakao !== 'undefined' && kakao.maps) {
                 kakao.maps.load(() => initMap());
             }
-        };
-    </script>
-</body>
-</html>
         };
     </script>
 </body>
