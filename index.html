@@ -37,10 +37,12 @@
             gap: 20px;
         }
 
+        /* ✅ 수정된 제목 디자인: 그리운 몽토리체 폰트 적용 및 색상 유지 */
         #app-title {
-            font-family: 'Jua', sans-serif; 
-            font-size: 26px;
+            font-family: 'Mongtoryche', serif; 
+            font-size: 28px; /* 폰트 특성에 맞춰 크기 살짝 조정 */
             color: #ff6b81;
+            font-weight: 500;
         }
 
         .filter-container {
@@ -59,7 +61,7 @@
             font-size: 15px;
             color: #333;
         }
-        select {
+        select, input[type="text"] {
             padding: 6px 10px;
             font-size: 14px;
             border: 1px solid #ccc;
@@ -68,7 +70,11 @@
             background: white;
             cursor: pointer;
         }
-        select:focus {
+        input[type="text"] {
+            width: 160px;
+            cursor: text;
+        }
+        select:focus, input[type="text"]:focus {
             border-color: #ff6b81;
         }
 
@@ -90,6 +96,34 @@
             display: none;
         }
         
+        /* ✅ 사이드바(검색 결과 리스트) 영역 스타일 추가 */
+        #search-sidebar {
+            position: absolute;
+            top: 80px; /* 통합 바 아래에 위치 */
+            left: 15px;
+            z-index: 15;
+            background: rgba(255, 255, 255, 0.95);
+            width: 300px;
+            max-height: calc(100% - 100px); /* 화면 아래로 안 넘치게 */
+            overflow-y: auto; /* 리스트 길면 스크롤 */
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            padding: 10px;
+        }
+
+        /* 리스트 안의 각 맛집 항목 */
+        .list-item {
+            padding: 12px 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+        .list-item:hover { background-color: #f0f0f0; }
+        .list-item:last-child { border-bottom: none; }
+        .list-item-name { font-weight: bold; font-size: 16px; color: #333; }
+        .list-item-address { font-size: 13px; color: #666; margin-top: 4px; }
+        
+        /* 지난번 약속한 팝업창 및 내어쓰기 디자인 완벽 유지 */
         .info-window {
             padding: 10px 35px 10px 10px; 
             width: max-content; 
@@ -133,7 +167,6 @@
             display: block;
             white-space: nowrap;
         }
-        
         .info-parking-container {
             display: flex;
             align-items: flex-start;
@@ -152,7 +185,6 @@
             white-space: pre-wrap; 
             line-height: 1.4;
         }
-        
         .info-desc {
             font-size: 14px;
             color: #444;
@@ -160,17 +192,7 @@
             word-break: break-all;
             white-space: pre; 
         }
-        input[type="text"] {
-    padding: 6px 10px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    outline: none;
-    width: 160px;
-}
-input[type="text"]:focus {
-    border-color: #ff6b81;
-}
+        
         @media (max-width: 600px) {
             #header-bar {
                 top: 10px;
@@ -185,31 +207,6 @@ input[type="text"]:focus {
                 justify-content: center;
             }
         }
-        /* 사이드바 전체 틀 */
-#search-sidebar {
-    position: absolute;
-    top: 80px; /* 상단 검색바 아래쪽에 위치 */
-    left: 15px;
-    z-index: 15;
-    background: rgba(255, 255, 255, 0.95);
-    width: 300px;
-    max-height: calc(100% - 100px); /* 화면 아래로 넘어가지 않게 방지 */
-    overflow-y: auto; /* 리스트가 길면 스크롤 생성 */
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    padding: 10px;
-}
-
-/* 리스트 안의 각 맛집 항목 */
-.list-item {
-    padding: 12px 10px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-}
-.list-item:hover { background-color: #f0f0f0; border-radius: 8px; }
-.list-item:last-child { border-bottom: none; }
-.list-item-name { font-weight: bold; font-size: 16px; color: #333; }
-.list-item-address { font-size: 13px; color: #666; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -230,15 +227,9 @@ input[type="text"]:focus {
                 </select>
             </div>
             <div class="filter-group">
-                <label>🍴 분류:</label>
-                <select id="category-select" onchange="applyCategoryFilter()">
-                   <option value="전체">전체</option>
-                </select>
+                <label>🔍 검색:</label>
+                <input type="text" id="search-input" placeholder="맛집이나 설명 검색..." onkeyup="applyFilters()">
             </div>
-            <div class="filter-group">
-            <label>🔍 검색:</label>
-            <input type="text" id="search-input" placeholder="맛집이나 설명 검색..." onkeyup="applyFilters()">
-        </div>
         </div>
     </div>
 
@@ -247,11 +238,11 @@ input[type="text"]:focus {
     <div id="map"></div>
 
     <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxwo6_TX31cBWDfkJM0MsrUvb0JF5NL-pHdUntl3BSwozEFcT237SGiqKRqjM6gpyuv/exec"; 
+        const GAS_API_URL = "YOUR_GAS_WEBAPP_URL_HERE"; 
         
         let map;
         let allStoreData = []; 
-        let storeMarkers = []; // ✅ 마커들을 저장하고 관리하는 핵심 배열로 변경
+        let storeMarkers = []; 
 
         function initMap() {
             try {
@@ -266,6 +257,7 @@ input[type="text"]:focus {
                     closeAllInfoWindows();
                 });
 
+                // ✅ idle 이벤트: 지도 이동/확대 완료 시 스마트 감지 유지
                 kakao.maps.event.addListener(map, 'idle', function() {
                     const zoomLevel = map.getLevel();
                     if (zoomLevel < 9) {
@@ -298,7 +290,7 @@ input[type="text"]:focus {
                 const responseData = await fetch(GAS_API_URL);
                 allStoreData = await responseData.json();
                 
-                initializeMarkers(); // ✅ 데이터를 가져오면 마커를 한 번만 싹 만들어 둡니다.
+                initializeMarkers(); 
 
                 if (sheetNames.length > 0) {
                     updateCategoryUI();
@@ -321,7 +313,6 @@ input[type="text"]:focus {
             });
         }
 
-        // ✅ 새롭게 추가된 핵심 함수: 마커를 파괴/재생성하지 않고 한 번만 준비해 두는 역할
         function initializeMarkers() {
             storeMarkers.forEach(item => {
                 item.marker.setMap(null);
@@ -332,7 +323,7 @@ input[type="text"]:focus {
             allStoreData.forEach(store => {
                 if (store.lat && store.lng) {
                     const coords = new kakao.maps.LatLng(store.lat, store.lng);
-                    const marker = new kakao.maps.Marker({ position: coords }); // 지도는 아직 지정 안 함
+                    const marker = new kakao.maps.Marker({ position: coords }); 
 
                     const infoContent = `
                         <div class="info-window">
@@ -409,50 +400,96 @@ input[type="text"]:focus {
             applyFilters();
         }
 
-        // ✅ 필터 시스템 최적화: 삭제(destroy) 대신 보이기/숨기기(setMap)만 실행하여 팝업 유지
-       function applyFilters() {
-    const selectedRegion = document.getElementById('region-select').value;
-    const selectedCategory = document.getElementById('category-select').value;
-    const zoomLevel = map.getLevel();
-    
-    // 👇 검색창에 입력한 글자를 가져오는 코드 추가
-    const searchKeyword = document.getElementById('search-input') ? document.getElementById('search-input').value.trim().toLowerCase() : "";
+        // ✅ 필터 시스템 완벽 복구: 중복된 필터 코드 지우고, 사이드바 바구니만 활용하여 성능 최적화
+        function applyFilters() {
+            const selectedRegion = document.getElementById('region-select').value;
+            const selectedCategory = document.getElementById('category-select').value;
+            const zoomLevel = map.getLevel();
+            const searchKeyword = document.getElementById('search-input') ? document.getElementById('search-input').value.trim().toLowerCase() : "";
 
-    storeMarkers.forEach(item => {
-        let isVisible = true;
+            let visibleItems = []; // 보여지는 마커를 담을 바구니 (사이드바 리스트 그리기용)
 
-        // 1. 카테고리 필터
-        if (selectedCategory !== "전체" && item.store.category !== selectedCategory) {
-            isVisible = false;
-        }
-        
-        // 2. 줌 레벨 및 지역 필터
-        if (zoomLevel < 9 && item.store.region !== selectedRegion) {
-            isVisible = false;
-        }
+            storeMarkers.forEach(item => {
+                let isVisible = true;
 
-        // 👇 3. 검색어 필터 추가: 이름이나 설명에 검색어가 포함 안 되어 있으면 숨김
-        if (searchKeyword !== "") {
-            const storeName = item.store.name ? item.store.name.toLowerCase() : "";
-            const storeDesc = item.store.description ? item.store.description.toLowerCase() : "";
+                // 1. 카테고리 필터
+                if (selectedCategory !== "전체" && item.store.category !== selectedCategory) {
+                    isVisible = false;
+                }
+                
+                // 2. 줌 레벨 및 지역 필터
+                if (zoomLevel < 9 && item.store.region !== selectedRegion) {
+                    isVisible = false;
+                }
+
+                // 3. 검색어 필터
+                if (searchKeyword !== "") {
+                    const storeName = item.store.name ? item.store.name.toLowerCase() : "";
+                    const storeDesc = item.store.description ? item.store.description.toLowerCase() : "";
+                    
+                    if (!storeName.includes(searchKeyword) && !storeDesc.includes(searchKeyword)) {
+                        isVisible = false;
+                    }
+                }
+
+                if (isVisible) {
+                    item.marker.setMap(map); // 조건 맞으면 보여줌
+                    visibleItems.push(item); // 사이드바 바구니에 담음
+                } else {
+                    item.marker.setMap(null); 
+                    item.infowindow.close(); 
+                }
+            });
             
-            if (!storeName.includes(searchKeyword) && !storeDesc.includes(searchKeyword)) {
-                isVisible = false;
-            }
+            updateSidebarList(visibleItems); // ✅ 살아남은 바구니를 사이드바 리스트로 그림
+            showLoader(false);
         }
 
-        // 최종적으로 보여줄지 숨길지 결정
-        if (isVisible) {
-            item.marker.setMap(map);
-            visibleItems.push(item);
-        } else {
-            item.marker.setMap(null); 
-            item.infowindow.close(); 
+        // ✅ 사이드바에 검색 결과를 HTML 리스트로 그려주는 함수
+        function updateSidebarList(items) {
+            const sidebar = document.getElementById('search-sidebar');
+            const searchKeyword = document.getElementById('search-input') ? document.getElementById('search-input').value.trim() : "";
+
+            // 검색어 없을 때는 사이드바 숨겨서 화면 넓게 씀
+            if (searchKeyword === "") {
+                sidebar.style.display = 'none';
+                return;
+            }
+
+            // 검색 결과 없을 때
+            if (items.length === 0) {
+                sidebar.innerHTML = "<div style='padding:20px; text-align:center; color:#666;'>검색 결과가 없습니다.</div>";
+                sidebar.style.display = 'block';
+                return;
+            }
+
+            // 검색 결과 있으면 리스트 생성
+            let html = "";
+            items.forEach((item, index) => {
+                // 리스트 클릭 시 triggerMarkerClick 함수 실행
+                html += `
+                    <div class="list-item" onclick="triggerMarkerClick(${index})">
+                        <div class="list-item-name">${item.store.name}</div>
+                        <div class="list-item-address">${item.store.address}</div>
+                    </div>
+                `;
+            });
+            
+            sidebar.innerHTML = html;
+            sidebar.style.display = 'block';
+            
+            // 클릭 이벤트 위해 현재 리스트를 전역 변수에 저장
+            window.currentVisibleItems = items;
         }
-    });
-    updateSidebarList(visibleItems);
-    showLoader(false);
-}
+
+        // ✅ 리스트 항목 클릭 시, 해당 마커 팝업창 열고 화면 중앙 이동하는 함수
+        function triggerMarkerClick(index) {
+            const item = window.currentVisibleItems[index];
+            closeAllInfoWindows();
+            item.infowindow.open(map, item.marker);
+            map.setLevel(4);
+            map.panTo(item.marker.getPosition());
+        }
 
         function changeRegion(regionName) {
             showLoader(true);
