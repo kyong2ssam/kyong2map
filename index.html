@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -160,7 +160,17 @@
             word-break: break-all;
             white-space: pre; 
         }
-        
+        input[type="text"] {
+    padding: 6px 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    outline: none;
+    width: 160px;
+}
+input[type="text"]:focus {
+    border-color: #ff6b81;
+}
         @media (max-width: 600px) {
             #header-bar {
                 top: 10px;
@@ -194,6 +204,16 @@
                     <option value="전체">전체</option>
                 </select>
             </div>
+            <div class="filter-group">
+                <label>🍴 분류:</label>
+                <select id="category-select" onchange="applyCategoryFilter()">
+                   <option value="전체">전체</option>
+                </select>
+            </div>
+            <div class="filter-group">
+            <label>🔍 검색:</label>
+            <input type="text" id="search-input" placeholder="맛집이나 설명 검색..." onkeyup="applyFilters()">
+        </div>
         </div>
     </div>
 
@@ -364,31 +384,48 @@
         }
 
         // ✅ 필터 시스템 최적화: 삭제(destroy) 대신 보이기/숨기기(setMap)만 실행하여 팝업 유지
-        function applyFilters() {
-            const selectedRegion = document.getElementById('region-select').value;
-            const selectedCategory = document.getElementById('category-select').value;
-            const zoomLevel = map.getLevel();
+       function applyFilters() {
+    const selectedRegion = document.getElementById('region-select').value;
+    const selectedCategory = document.getElementById('category-select').value;
+    const zoomLevel = map.getLevel();
+    
+    // 👇 검색창에 입력한 글자를 가져오는 코드 추가
+    const searchKeyword = document.getElementById('search-input') ? document.getElementById('search-input').value.trim().toLowerCase() : "";
 
-            storeMarkers.forEach(item => {
-                let isVisible = true;
+    storeMarkers.forEach(item => {
+        let isVisible = true;
 
-                if (selectedCategory !== "전체" && item.store.category !== selectedCategory) {
-                    isVisible = false;
-                }
-                if (zoomLevel < 9 && item.store.region !== selectedRegion) {
-                    isVisible = false;
-                }
-
-                if (isVisible) {
-                    item.marker.setMap(map); // 조건에 맞으면 보여줌
-                } else {
-                    item.marker.setMap(null); // 조건에 안 맞으면 숨김
-                    item.infowindow.close(); // 숨길 때는 열려있던 팝업도 닫아줌
-                }
-            });
-            
-            showLoader(false);
+        // 1. 카테고리 필터
+        if (selectedCategory !== "전체" && item.store.category !== selectedCategory) {
+            isVisible = false;
         }
+        
+        // 2. 줌 레벨 및 지역 필터
+        if (zoomLevel < 9 && item.store.region !== selectedRegion) {
+            isVisible = false;
+        }
+
+        // 👇 3. 검색어 필터 추가: 이름이나 설명에 검색어가 포함 안 되어 있으면 숨김
+        if (searchKeyword !== "") {
+            const storeName = item.store.name ? item.store.name.toLowerCase() : "";
+            const storeDesc = item.store.description ? item.store.description.toLowerCase() : "";
+            
+            if (!storeName.includes(searchKeyword) && !storeDesc.includes(searchKeyword)) {
+                isVisible = false;
+            }
+        }
+
+        // 최종적으로 보여줄지 숨길지 결정
+        if (isVisible) {
+            item.marker.setMap(map); 
+        } else {
+            item.marker.setMap(null); 
+            item.infowindow.close(); 
+        }
+    });
+    
+    showLoader(false);
+}
 
         function changeRegion(regionName) {
             showLoader(true);
